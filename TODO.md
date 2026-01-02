@@ -115,14 +115,14 @@ A 100% POSIX-compatible AWK implementation in Rust, with comprehensive GNU AWK (
 ## Test Coverage
 
 ```
-Unit Tests:      100 (lexer, parser, interpreter, value system, error handling)
-E2E Tests:       205 (complete AWK programs)
+Unit Tests:      170 (lexer, parser, interpreter, value system, error handling)
+E2E Tests:       412 (complete AWK programs)
 CLI Tests:        19 (command-line interface)
 Compat Tests:     34 (gawk comparison)
 Doc Tests:         4 (API examples)
-Total:           362 tests
+Total:           639 tests
 
-Coverage:        78% (library code)
+Coverage:        86% (library code, excluding CLI main.rs)
 ```
 
 All tests pass with 100% success rate.
