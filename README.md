@@ -3,7 +3,7 @@
 [![CI](https://github.com/pegasusheavy/rawk/actions/workflows/ci.yml/badge.svg)](https://github.com/pegasusheavy/rawk/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/rawk.svg)](https://crates.io/crates/rawk)
 [![Documentation](https://docs.rs/rawk/badge.svg)](https://docs.rs/rawk)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 
 A 100% POSIX-compatible AWK implementation in Rust with GNU AWK (gawk) extension support.
@@ -153,7 +153,14 @@ src/
 
 ## License
 
-[MIT License](LICENSE)
+Licensed under either of:
+
+- [Apache License, Version 2.0](LICENSE-APACHE)
+- [MIT License](LICENSE-MIT)
+
+at your option.
+
+Copyright © 2026 Pegasus Heavy Industries LLC
 
 ## Testing
 
