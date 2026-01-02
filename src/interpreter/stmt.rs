@@ -1,5 +1,5 @@
-use std::io::Write;
 use std::fs::{File, OpenOptions};
+use std::io::Write;
 use std::process::{Command, Stdio};
 
 use crate::ast::*;
@@ -37,17 +37,31 @@ impl<'a> Interpreter<'a> {
                 Ok(StmtResult::Normal)
             }
 
-            Stmt::Print { args, output: redirect, .. } => {
+            Stmt::Print {
+                args,
+                output: redirect,
+                ..
+            } => {
                 self.execute_print(args, redirect, output)?;
                 Ok(StmtResult::Normal)
             }
 
-            Stmt::Printf { format, args, output: redirect, .. } => {
+            Stmt::Printf {
+                format,
+                args,
+                output: redirect,
+                ..
+            } => {
                 self.execute_printf(format, args, redirect, output)?;
                 Ok(StmtResult::Normal)
             }
 
-            Stmt::If { condition, then_branch, else_branch, .. } => {
+            Stmt::If {
+                condition,
+                then_branch,
+                else_branch,
+                ..
+            } => {
                 let cond = self.eval_expr_with_output(condition, output)?;
                 if cond.is_truthy() {
                     self.execute_stmt(then_branch, output)
@@ -58,7 +72,9 @@ impl<'a> Interpreter<'a> {
                 }
             }
 
-            Stmt::While { condition, body, .. } => {
+            Stmt::While {
+                condition, body, ..
+            } => {
                 loop {
                     let cond = self.eval_expr_with_output(condition, output)?;
                     if !cond.is_truthy() {
@@ -73,7 +89,9 @@ impl<'a> Interpreter<'a> {
                 Ok(StmtResult::Normal)
             }
 
-            Stmt::DoWhile { body, condition, .. } => {
+            Stmt::DoWhile {
+                body, condition, ..
+            } => {
                 loop {
                     match self.execute_stmt(body, output)? {
                         StmtResult::Normal | StmtResult::Continue => {}
@@ -88,7 +106,13 @@ impl<'a> Interpreter<'a> {
                 Ok(StmtResult::Normal)
             }
 
-            Stmt::For { init, condition, update, body, .. } => {
+            Stmt::For {
+                init,
+                condition,
+                update,
+                body,
+                ..
+            } => {
                 // Execute init
                 if let Some(init_stmt) = init {
                     self.execute_stmt(init_stmt, output)?;
@@ -118,10 +142,17 @@ impl<'a> Interpreter<'a> {
                 Ok(StmtResult::Normal)
             }
 
-            Stmt::ForIn { var, array, body, .. } => {
+            Stmt::ForIn {
+                var, array, body, ..
+            } => {
                 // Get keys from array (resolve aliases for pass-by-reference)
-                let resolved_array = self.array_aliases.get(array).map(|s| s.as_str()).unwrap_or(array);
-                let keys: Vec<String> = self.arrays
+                let resolved_array = self
+                    .array_aliases
+                    .get(array)
+                    .map(|s| s.as_str())
+                    .unwrap_or(array);
+                let keys: Vec<String> = self
+                    .arrays
                     .get(resolved_array)
                     .map(|arr| arr.keys().cloned().collect())
                     .unwrap_or_default();
@@ -154,8 +185,12 @@ impl<'a> Interpreter<'a> {
             }
 
             Stmt::Exit { code, .. } => {
-                self.exit_code = code.as_ref()
-                    .map(|e| self.eval_expr_with_output(e, output).map(|v| v.to_number() as i32))
+                self.exit_code = code
+                    .as_ref()
+                    .map(|e| {
+                        self.eval_expr_with_output(e, output)
+                            .map(|v| v.to_number() as i32)
+                    })
                     .transpose()?
                     .unwrap_or(0);
                 self.should_exit = true;
@@ -163,7 +198,8 @@ impl<'a> Interpreter<'a> {
             }
 
             Stmt::Return { value, .. } => {
-                let val = value.as_ref()
+                let val = value
+                    .as_ref()
                     .map(|e| self.eval_expr_with_output(e, output))
                     .transpose()?
                     .unwrap_or(Value::Uninitialized);
@@ -175,7 +211,8 @@ impl<'a> Interpreter<'a> {
                     // delete array (entire array)
                     self.arrays.remove(array);
                 } else {
-                    let key_parts: Result<Vec<Value>> = index.iter()
+                    let key_parts: Result<Vec<Value>> = index
+                        .iter()
                         .map(|e| self.eval_expr_with_output(e, output))
                         .collect();
                     let key = self.make_array_key(&key_parts?);
@@ -184,7 +221,11 @@ impl<'a> Interpreter<'a> {
                 Ok(StmtResult::Normal)
             }
 
-            Stmt::Getline { var, input, location } => {
+            Stmt::Getline {
+                var,
+                input,
+                location,
+            } => {
                 // Getline as a statement
                 let _result = self.eval_getline(var.as_ref(), input.as_ref(), *location)?;
                 Ok(StmtResult::Normal)
@@ -198,8 +239,12 @@ impl<'a> Interpreter<'a> {
         redirect: &Option<OutputRedirect>,
         default_output: &mut W,
     ) -> Result<()> {
-        let values: Result<Vec<String>> = args.iter()
-            .map(|e| self.eval_expr_with_output(e, default_output).map(|v| v.to_string_val()))
+        let values: Result<Vec<String>> = args
+            .iter()
+            .map(|e| {
+                self.eval_expr_with_output(e, default_output)
+                    .map(|v| v.to_string_val())
+            })
             .collect();
         let values = values?;
 
@@ -216,17 +261,23 @@ impl<'a> Interpreter<'a> {
                 writeln!(default_output, "{}", line).map_err(Error::Io)?;
             }
             Some(OutputRedirect::Truncate(target_expr)) => {
-                let filename = self.eval_expr_with_output(target_expr, default_output)?.to_string_val();
+                let filename = self
+                    .eval_expr_with_output(target_expr, default_output)?
+                    .to_string_val();
                 let file = self.get_or_open_file(&filename, false)?;
                 writeln!(file, "{}", line).map_err(Error::Io)?;
             }
             Some(OutputRedirect::Append(target_expr)) => {
-                let filename = self.eval_expr_with_output(target_expr, default_output)?.to_string_val();
+                let filename = self
+                    .eval_expr_with_output(target_expr, default_output)?
+                    .to_string_val();
                 let file = self.get_or_open_file(&filename, true)?;
                 writeln!(file, "{}", line).map_err(Error::Io)?;
             }
             Some(OutputRedirect::Pipe(cmd_expr)) => {
-                let cmd = self.eval_expr_with_output(cmd_expr, default_output)?.to_string_val();
+                let cmd = self
+                    .eval_expr_with_output(cmd_expr, default_output)?
+                    .to_string_val();
                 let pipe = self.get_or_open_pipe(&cmd)?;
                 writeln!(pipe, "{}", line).map_err(Error::Io)?;
             }
@@ -242,8 +293,11 @@ impl<'a> Interpreter<'a> {
         redirect: &Option<OutputRedirect>,
         default_output: &mut W,
     ) -> Result<()> {
-        let format = self.eval_expr_with_output(format_expr, default_output)?.to_string_val();
-        let values: Result<Vec<Value>> = args.iter()
+        let format = self
+            .eval_expr_with_output(format_expr, default_output)?
+            .to_string_val();
+        let values: Result<Vec<Value>> = args
+            .iter()
             .map(|e| self.eval_expr_with_output(e, default_output))
             .collect();
         let values = values?;
@@ -256,17 +310,23 @@ impl<'a> Interpreter<'a> {
                 write!(default_output, "{}", formatted).map_err(Error::Io)?;
             }
             Some(OutputRedirect::Truncate(target_expr)) => {
-                let filename = self.eval_expr_with_output(target_expr, default_output)?.to_string_val();
+                let filename = self
+                    .eval_expr_with_output(target_expr, default_output)?
+                    .to_string_val();
                 let file = self.get_or_open_file(&filename, false)?;
                 write!(file, "{}", formatted).map_err(Error::Io)?;
             }
             Some(OutputRedirect::Append(target_expr)) => {
-                let filename = self.eval_expr_with_output(target_expr, default_output)?.to_string_val();
+                let filename = self
+                    .eval_expr_with_output(target_expr, default_output)?
+                    .to_string_val();
                 let file = self.get_or_open_file(&filename, true)?;
                 write!(file, "{}", formatted).map_err(Error::Io)?;
             }
             Some(OutputRedirect::Pipe(cmd_expr)) => {
-                let cmd = self.eval_expr_with_output(cmd_expr, default_output)?.to_string_val();
+                let cmd = self
+                    .eval_expr_with_output(cmd_expr, default_output)?
+                    .to_string_val();
                 let pipe = self.get_or_open_pipe(&cmd)?;
                 write!(pipe, "{}", formatted).map_err(Error::Io)?;
             }
@@ -287,7 +347,8 @@ impl<'a> Interpreter<'a> {
             } else {
                 File::create(filename).map_err(Error::Io)?
             };
-            self.output_files.insert(filename.to_string(), OutputFile::File(file));
+            self.output_files
+                .insert(filename.to_string(), OutputFile::File(file));
         }
         Ok(self.output_files.get_mut(filename).unwrap())
     }
@@ -303,7 +364,8 @@ impl<'a> Interpreter<'a> {
                 .map_err(Error::Io)?;
 
             let stdin = child.stdin.unwrap();
-            self.output_files.insert(cmd.to_string(), OutputFile::Pipe(stdin));
+            self.output_files
+                .insert(cmd.to_string(), OutputFile::Pipe(stdin));
         }
         Ok(self.output_files.get_mut(cmd).unwrap())
     }

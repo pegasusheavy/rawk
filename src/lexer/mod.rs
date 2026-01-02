@@ -1,6 +1,6 @@
 mod tokens;
 
-pub use tokens::{keyword_to_token, Token, TokenKind};
+pub use tokens::{Token, TokenKind, keyword_to_token};
 
 use crate::error::{Error, Result};
 
@@ -187,7 +187,11 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     Token::new(TokenKind::And, line, col)
                 } else {
-                    return Err(Error::lexer("unexpected '&', did you mean '&&'?", line, col));
+                    return Err(Error::lexer(
+                        "unexpected '&', did you mean '&&'?",
+                        line,
+                        col,
+                    ));
                 }
             }
             '|' => {
@@ -262,13 +266,19 @@ impl<'a> Lexer<'a> {
     }
 
     fn peek_char_is(&mut self, expected: char) -> bool {
-        self.chars.peek().map(|(_, c)| *c == expected).unwrap_or(false)
+        self.chars
+            .peek()
+            .map(|(_, c)| *c == expected)
+            .unwrap_or(false)
     }
 
     fn peek_next_is_digit(&self) -> bool {
         let mut chars = self.chars.clone();
         chars.next(); // skip current
-        chars.next().map(|(_, c)| c.is_ascii_digit()).unwrap_or(false)
+        chars
+            .next()
+            .map(|(_, c)| c.is_ascii_digit())
+            .unwrap_or(false)
     }
 
     fn advance(&mut self) -> Option<(usize, char)> {
@@ -327,16 +337,46 @@ impl<'a> Lexer<'a> {
                 Some((_, '\\')) => {
                     // Escape sequence
                     match self.peek_char() {
-                        Some((_, 'n')) => { self.advance(); value.push('\n'); }
-                        Some((_, 't')) => { self.advance(); value.push('\t'); }
-                        Some((_, 'r')) => { self.advance(); value.push('\r'); }
-                        Some((_, 'b')) => { self.advance(); value.push('\x08'); }
-                        Some((_, 'f')) => { self.advance(); value.push('\x0C'); }
-                        Some((_, 'a')) => { self.advance(); value.push('\x07'); }
-                        Some((_, 'v')) => { self.advance(); value.push('\x0B'); }
-                        Some((_, '\\')) => { self.advance(); value.push('\\'); }
-                        Some((_, '"')) => { self.advance(); value.push('"'); }
-                        Some((_, '/')) => { self.advance(); value.push('/'); }
+                        Some((_, 'n')) => {
+                            self.advance();
+                            value.push('\n');
+                        }
+                        Some((_, 't')) => {
+                            self.advance();
+                            value.push('\t');
+                        }
+                        Some((_, 'r')) => {
+                            self.advance();
+                            value.push('\r');
+                        }
+                        Some((_, 'b')) => {
+                            self.advance();
+                            value.push('\x08');
+                        }
+                        Some((_, 'f')) => {
+                            self.advance();
+                            value.push('\x0C');
+                        }
+                        Some((_, 'a')) => {
+                            self.advance();
+                            value.push('\x07');
+                        }
+                        Some((_, 'v')) => {
+                            self.advance();
+                            value.push('\x0B');
+                        }
+                        Some((_, '\\')) => {
+                            self.advance();
+                            value.push('\\');
+                        }
+                        Some((_, '"')) => {
+                            self.advance();
+                            value.push('"');
+                        }
+                        Some((_, '/')) => {
+                            self.advance();
+                            value.push('/');
+                        }
                         Some((_, 'x')) => {
                             // Hex escape: \xNN
                             self.advance(); // consume 'x'
@@ -351,7 +391,8 @@ impl<'a> Lexer<'a> {
                         Some((_, c)) if c.is_ascii_digit() && c != '8' && c != '9' => {
                             // Octal escape: \NNN (1-3 octal digits)
                             let octal = self.read_octal_digits(3);
-                            if let Some(ch) = u8::from_str_radix(&octal, 8).ok().map(|b| b as char) {
+                            if let Some(ch) = u8::from_str_radix(&octal, 8).ok().map(|b| b as char)
+                            {
                                 value.push(ch);
                             } else {
                                 value.push('\\');
@@ -369,7 +410,11 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 Some((_, '\n')) => {
-                    return Err(Error::lexer("unterminated string (newline in string)", line, col));
+                    return Err(Error::lexer(
+                        "unterminated string (newline in string)",
+                        line,
+                        col,
+                    ));
                 }
                 Some((_, ch)) => value.push(ch),
                 None => {
@@ -399,7 +444,7 @@ impl<'a> Lexer<'a> {
         let mut result = String::new();
         for _ in 0..max_count {
             match self.peek_char() {
-                Some((_, c)) if c >= '0' && c <= '7' => {
+                Some((_, c)) if ('0'..='7').contains(&c) => {
                     self.advance();
                     result.push(c);
                 }
@@ -428,7 +473,11 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 Some((_, '\n')) => {
-                    return Err(Error::lexer("unterminated regex (newline in regex)", line, col));
+                    return Err(Error::lexer(
+                        "unterminated regex (newline in regex)",
+                        line,
+                        col,
+                    ));
                 }
                 Some((_, ch)) => pattern.push(ch),
                 None => {
@@ -515,7 +564,8 @@ impl<'a> Lexer<'a> {
         let ident = &self.source[start_pos..end_pos];
 
         // Check if it's a keyword
-        let kind = keyword_to_token(ident).unwrap_or_else(|| TokenKind::Identifier(ident.to_string()));
+        let kind =
+            keyword_to_token(ident).unwrap_or_else(|| TokenKind::Identifier(ident.to_string()));
 
         Ok(Token::new(kind, line, col))
     }
@@ -554,11 +604,11 @@ mod tests {
 
     #[test]
     fn test_numbers() {
-        let mut lexer = Lexer::new("42 3.14 1e10 2.5e-3");
+        let mut lexer = Lexer::new("42 2.75 1e10 2.5e-3");
         let tokens = lexer.tokenize().unwrap();
 
         assert!(matches!(tokens[0].kind, TokenKind::Number(n) if n == 42.0));
-        assert!(matches!(tokens[1].kind, TokenKind::Number(n) if (n - 3.14).abs() < 0.001));
+        assert!(matches!(tokens[1].kind, TokenKind::Number(n) if (n - 2.75).abs() < 0.001));
         assert!(matches!(tokens[2].kind, TokenKind::Number(n) if n == 1e10));
         assert!(matches!(tokens[3].kind, TokenKind::Number(n) if (n - 2.5e-3).abs() < 0.0001));
     }
@@ -748,7 +798,9 @@ mod tests {
 
     #[test]
     fn test_more_keywords() {
-        let mut lexer = Lexer::new("do break continue function return delete exit next nextfile getline printf in BEGINFILE ENDFILE");
+        let mut lexer = Lexer::new(
+            "do break continue function return delete exit next nextfile getline printf in BEGINFILE ENDFILE",
+        );
         let tokens = lexer.tokenize().unwrap();
         assert!(matches!(tokens[0].kind, TokenKind::Do));
         assert!(matches!(tokens[1].kind, TokenKind::Break));
@@ -890,7 +942,10 @@ mod tests {
         let mut lexer = Lexer::new("a\n\n\nb");
         let tokens = lexer.tokenize().unwrap();
         // Should have multiple newline tokens
-        let newline_count = tokens.iter().filter(|t| matches!(t.kind, TokenKind::Newline)).count();
+        let newline_count = tokens
+            .iter()
+            .filter(|t| matches!(t.kind, TokenKind::Newline))
+            .count();
         assert!(newline_count >= 2);
     }
 
@@ -916,8 +971,8 @@ mod tests {
         let mut lexer = Lexer::new(r#""\b\f""#);
         let tokens = lexer.tokenize().unwrap();
         if let TokenKind::String(s) = &tokens[0].kind {
-            assert!(s.contains('\x08'));  // backspace
-            assert!(s.contains('\x0C'));  // form feed
+            assert!(s.contains('\x08')); // backspace
+            assert!(s.contains('\x0C')); // form feed
         } else {
             panic!("Expected string token");
         }

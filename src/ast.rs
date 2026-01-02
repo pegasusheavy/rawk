@@ -74,7 +74,10 @@ pub struct Block {
 
 impl Block {
     pub fn new(statements: Vec<Stmt>, location: SourceLocation) -> Self {
-        Self { statements, location }
+        Self {
+            statements,
+            location,
+        }
     }
 
     pub fn empty(location: SourceLocation) -> Self {
@@ -371,19 +374,19 @@ pub enum BinaryOp {
 /// Unary operators
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
-    Neg,    // -x
-    Pos,    // +x
-    Not,    // !x
+    Neg, // -x
+    Pos, // +x
+    Not, // !x
 }
 
 /// Assignment operators
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssignOp {
-    Assign,     // =
-    AddAssign,  // +=
-    SubAssign,  // -=
-    MulAssign,  // *=
-    DivAssign,  // /=
-    ModAssign,  // %=
-    PowAssign,  // ^=
+    Assign,    // =
+    AddAssign, // +=
+    SubAssign, // -=
+    MulAssign, // *=
+    DivAssign, // /=
+    ModAssign, // %=
+    PowAssign, // ^=
 }

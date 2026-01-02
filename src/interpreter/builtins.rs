@@ -40,15 +40,18 @@ impl<'a> Interpreter<'a> {
         // Check for user-defined functions
         if let Some(func) = self.functions.get(name).cloned() {
             // Extract array names from arguments for pass-by-reference
-            let array_refs: Vec<Option<String>> = args.iter().map(|e| {
-                if let Expr::Var(name, _) = e {
-                    if self.arrays.contains_key(name) {
+            let array_refs: Vec<Option<String>> = args
+                .iter()
+                .map(|e| {
+                    if let Expr::Var(name, _) = e
+                        && self.arrays.contains_key(name)
+                    {
                         return Some(name.clone());
                     }
-                }
-                None
-            }).collect();
-            return self.call_user_function(&func, arg_values, array_refs, output);
+                    None
+                })
+                .collect();
+            return self.call_user_function(func, arg_values, array_refs, output);
         }
 
         Err(Error::runtime_at(
@@ -67,15 +70,22 @@ impl<'a> Interpreter<'a> {
     }
 
     /// Call sub or gsub with proper regex and target handling
-    fn call_regex_sub(&mut self, name: &str, args: &[Expr], location: SourceLocation) -> Result<Value> {
+    fn call_regex_sub(
+        &mut self,
+        name: &str,
+        args: &[Expr],
+        location: SourceLocation,
+    ) -> Result<Value> {
         let global = name == "gsub";
 
-        let pattern = args.first()
+        let pattern = args
+            .first()
             .map(|e| self.extract_pattern(e))
             .transpose()?
             .unwrap_or_default();
 
-        let replacement = args.get(1)
+        let replacement = args
+            .get(1)
             .map(|e| self.eval_expr(e))
             .transpose()?
             .map(|v| v.to_string_val())
@@ -83,13 +93,20 @@ impl<'a> Interpreter<'a> {
 
         // Get the target (third argument or $0)
         let (target_value, target_expr) = if let Some(target_arg) = args.get(2) {
-            (self.eval_expr(target_arg)?.to_string_val(), Some(target_arg))
+            (
+                self.eval_expr(target_arg)?.to_string_val(),
+                Some(target_arg),
+            )
         } else {
             (self.record.clone(), None)
         };
 
         let re = regex::Regex::new(&pattern).map_err(|e| {
-            Error::runtime_at(format!("invalid regex: {}", e), location.line, location.column)
+            Error::runtime_at(
+                format!("invalid regex: {}", e),
+                location.line,
+                location.column,
+            )
         })?;
 
         let (new_str, count) = regex_sub_helper(&re, &replacement, &target_value, global);
@@ -106,19 +123,25 @@ impl<'a> Interpreter<'a> {
 
     /// Call match with proper regex handling
     fn call_match(&mut self, args: &[Expr], location: SourceLocation) -> Result<Value> {
-        let s = args.first()
+        let s = args
+            .first()
             .map(|e| self.eval_expr(e))
             .transpose()?
             .map(|v| v.to_string_val())
             .unwrap_or_default();
 
-        let pattern = args.get(1)
+        let pattern = args
+            .get(1)
             .map(|e| self.extract_pattern(e))
             .transpose()?
             .unwrap_or_default();
 
         let re = regex::Regex::new(&pattern).map_err(|e| {
-            Error::runtime_at(format!("invalid regex: {}", e), location.line, location.column)
+            Error::runtime_at(
+                format!("invalid regex: {}", e),
+                location.line,
+                location.column,
+            )
         })?;
 
         if let Some(m) = re.find(&s) {
@@ -134,7 +157,8 @@ impl<'a> Interpreter<'a> {
 
     /// Call split with proper array name handling
     fn call_split(&mut self, args: &[Expr], location: SourceLocation) -> Result<Value> {
-        let s = args.first()
+        let s = args
+            .first()
             .map(|e| self.eval_expr(e))
             .transpose()?
             .map(|v| v.to_string_val())
@@ -178,7 +202,11 @@ impl<'a> Interpreter<'a> {
         } else {
             // Use regex split for multi-char separators
             let re = regex::Regex::new(&sep).map_err(|e| {
-                Error::runtime_at(format!("invalid regex: {}", e), location.line, location.column)
+                Error::runtime_at(
+                    format!("invalid regex: {}", e),
+                    location.line,
+                    location.column,
+                )
             })?;
             re.split(&s).collect()
         };
@@ -193,14 +221,22 @@ impl<'a> Interpreter<'a> {
 
     /// asort(source [, dest]) - sort array values
     /// asorti(source [, dest]) - sort array indices
-    fn call_asort(&mut self, sort_indices: bool, args: &[Expr], location: SourceLocation) -> Result<Value> {
+    fn call_asort(
+        &mut self,
+        sort_indices: bool,
+        args: &[Expr],
+        location: SourceLocation,
+    ) -> Result<Value> {
         // Get source array name
         let source_name = match args.first() {
             Some(Expr::Var(name, _)) => name.clone(),
             _ => {
                 return Err(Error::runtime_at(
-                    if sort_indices { "asorti: first argument must be an array" }
-                    else { "asort: first argument must be an array" },
+                    if sort_indices {
+                        "asorti: first argument must be an array"
+                    } else {
+                        "asort: first argument must be an array"
+                    },
                     location.line,
                     location.column,
                 ));
@@ -213,8 +249,11 @@ impl<'a> Interpreter<'a> {
             None => None,
             _ => {
                 return Err(Error::runtime_at(
-                    if sort_indices { "asorti: second argument must be an array" }
-                    else { "asort: second argument must be an array" },
+                    if sort_indices {
+                        "asorti: second argument must be an array"
+                    } else {
+                        "asort: second argument must be an array"
+                    },
                     location.line,
                     location.column,
                 ));
@@ -252,7 +291,8 @@ impl<'a> Interpreter<'a> {
     /// patsplit(string, array, fieldpat [, seps]) - split by pattern matches
     fn call_patsplit(&mut self, args: &[Expr], location: SourceLocation) -> Result<Value> {
         // Get string to split
-        let s = args.first()
+        let s = args
+            .first()
             .map(|e| self.eval_expr(e))
             .transpose()?
             .map(|v| v.to_string_val())
@@ -301,7 +341,11 @@ impl<'a> Interpreter<'a> {
         // Store matches in array
         for (i, mat) in matches.iter().enumerate() {
             let key = (i + 1).to_string();
-            self.set_array_element(&array_name, &key, Value::from_string(mat.as_str().to_string()));
+            self.set_array_element(
+                &array_name,
+                &key,
+                Value::from_string(mat.as_str().to_string()),
+            );
         }
 
         // Store separators if requested
@@ -333,27 +377,29 @@ impl<'a> Interpreter<'a> {
 
     /// Call close to close a file or pipe
     fn call_close(&mut self, args: &[Expr], location: SourceLocation) -> Result<Value> {
-        let filename = args.first()
+        let filename = args
+            .first()
             .map(|e| self.eval_expr(e))
             .transpose()?
             .map(|v| v.to_string_val())
             .unwrap_or_default();
 
-        // Remove from output files if it exists
-        if self.output_files.remove(&filename).is_some() {
-            Ok(Value::Number(0.0))  // Success
-        } else if self.input_files.remove(&filename).is_some() {
-            Ok(Value::Number(0.0))  // Success
-        } else if self.pipes.remove(&filename).is_some() {
-            Ok(Value::Number(0.0))  // Success
-        } else {
-            let _ = location;
-            Ok(Value::Number(-1.0)) // Not found
-        }
+        // Remove from any of our file/pipe collections
+        let found = self.output_files.remove(&filename).is_some()
+            || self.input_files.remove(&filename).is_some()
+            || self.pipes.remove(&filename).is_some();
+
+        let _ = location;
+        Ok(Value::Number(if found { 0.0 } else { -1.0 }))
     }
 
     /// Call fflush to flush output
-    fn call_fflush<W: Write>(&mut self, args: &[Expr], _location: SourceLocation, output: &mut W) -> Result<Value> {
+    fn call_fflush<W: Write>(
+        &mut self,
+        args: &[Expr],
+        _location: SourceLocation,
+        output: &mut W,
+    ) -> Result<Value> {
         if args.is_empty() {
             // Flush all output
             output.flush().map_err(Error::Io)?;
@@ -379,7 +425,10 @@ impl<'a> Interpreter<'a> {
         match name {
             // String functions
             "length" => {
-                let s = args.first().map(|v| v.to_string_val()).unwrap_or_else(|| self.record.clone());
+                let s = args
+                    .first()
+                    .map(|v| v.to_string_val())
+                    .unwrap_or_else(|| self.record.clone());
                 // Use character count for UTF-8 support
                 Ok(Some(Value::Number(s.chars().count() as f64)))
             }
@@ -403,10 +452,13 @@ impl<'a> Interpreter<'a> {
                 let s = args.first().map(|v| v.to_string_val()).unwrap_or_default();
                 let target = args.get(1).map(|v| v.to_string_val()).unwrap_or_default();
                 // Find byte position, then convert to character position
-                let pos = s.find(&target).map(|byte_idx| {
-                    // Count characters before the byte index
-                    s[..byte_idx].chars().count() + 1
-                }).unwrap_or(0);
+                let pos = s
+                    .find(&target)
+                    .map(|byte_idx| {
+                        // Count characters before the byte index
+                        s[..byte_idx].chars().count() + 1
+                    })
+                    .unwrap_or(0);
                 Ok(Some(Value::Number(pos as f64)))
             }
 
@@ -513,7 +565,8 @@ impl<'a> Interpreter<'a> {
             "mktime" => {
                 // Parse "YYYY MM DD HH MM SS [DST]" into epoch timestamp
                 let datespec = args.first().map(|v| v.to_string_val()).unwrap_or_default();
-                let parts: Vec<i64> = datespec.split_whitespace()
+                let parts: Vec<i64> = datespec
+                    .split_whitespace()
                     .filter_map(|s| s.parse().ok())
                     .collect();
 
@@ -537,9 +590,13 @@ impl<'a> Interpreter<'a> {
 
             "strftime" => {
                 // Format timestamp
-                let format = args.first().map(|v| v.to_string_val()).unwrap_or_else(|| "%a %b %e %H:%M:%S %Z %Y".to_string());
+                let format = args
+                    .first()
+                    .map(|v| v.to_string_val())
+                    .unwrap_or_else(|| "%a %b %e %H:%M:%S %Z %Y".to_string());
                 use std::time::{SystemTime, UNIX_EPOCH};
-                let timestamp = args.get(1)
+                let timestamp = args
+                    .get(1)
                     .map(|v| v.to_number() as u64)
                     .unwrap_or_else(|| {
                         SystemTime::now()
@@ -556,14 +613,21 @@ impl<'a> Interpreter<'a> {
             "gensub" => {
                 let pattern = args.first().map(|v| v.to_string_val()).unwrap_or_default();
                 let replacement = args.get(1).map(|v| v.to_string_val()).unwrap_or_default();
-                let how = args.get(2).map(|v| v.to_string_val()).unwrap_or_else(|| "g".to_string());
-                let target = args.get(3).map(|v| v.to_string_val()).unwrap_or_else(|| self.record.clone());
+                let how = args
+                    .get(2)
+                    .map(|v| v.to_string_val())
+                    .unwrap_or_else(|| "g".to_string());
+                let target = args
+                    .get(3)
+                    .map(|v| v.to_string_val())
+                    .unwrap_or_else(|| self.record.clone());
 
                 let re = self.get_regex(&pattern)?;
 
                 // "g" or "G" means global, otherwise it's the occurrence number
                 let result = if how.eq_ignore_ascii_case("g") {
-                    re.replace_all(&target, replacement.replace("&", "$0").as_str()).to_string()
+                    re.replace_all(&target, replacement.replace("&", "$0").as_str())
+                        .to_string()
                 } else if let Ok(n) = how.parse::<usize>() {
                     // Replace nth occurrence
                     let mut count = 0;
@@ -579,14 +643,11 @@ impl<'a> Interpreter<'a> {
                         }
                     }
                     result.push_str(&target[last_end..]);
-                    if count < n {
-                        target.clone()
-                    } else {
-                        result
-                    }
+                    if count < n { target.clone() } else { result }
                 } else {
                     // Default to first occurrence
-                    re.replace(&target, replacement.replace("&", "$0").as_str()).to_string()
+                    re.replace(&target, replacement.replace("&", "$0").as_str())
+                        .to_string()
                 };
 
                 Ok(Some(Value::from_string(result)))
@@ -604,19 +665,26 @@ impl<'a> Interpreter<'a> {
         output: &mut W,
     ) -> Result<Value> {
         // Save current variables for local scope
-        let saved_vars: std::collections::HashMap<String, Value> = func.params.iter()
+        let saved_vars: std::collections::HashMap<String, Value> = func
+            .params
+            .iter()
             .filter_map(|name| self.variables.get(name).map(|v| (name.clone(), v.clone())))
             .collect();
 
         // Save any arrays that share names with parameters (for local arrays)
-        let saved_arrays: std::collections::HashMap<String, std::collections::HashMap<String, Value>> =
-            func.params.iter()
+        let saved_arrays: std::collections::HashMap<
+            String,
+            std::collections::HashMap<String, Value>,
+        > = func
+            .params
+            .iter()
             .filter_map(|name| self.arrays.get(name).map(|a| (name.clone(), a.clone())))
             .collect();
 
         // Create array aliases for pass-by-reference
         // If an argument is an array reference, the parameter name should point to the same array
-        let mut array_aliases: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut array_aliases: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
         for (i, param) in func.params.iter().enumerate() {
             if let Some(Some(array_name)) = array_refs.get(i) {
                 // This parameter is an array reference
@@ -660,7 +728,13 @@ impl<'a> Interpreter<'a> {
         for param in &func.params {
             if let Some(arr) = saved_arrays.get(param) {
                 self.arrays.insert(param.clone(), arr.clone());
-            } else if !array_refs.get(func.params.iter().position(|p| p == param).unwrap_or(usize::MAX))
+            } else if !array_refs
+                .get(
+                    func.params
+                        .iter()
+                        .position(|p| p == param)
+                        .unwrap_or(usize::MAX),
+                )
                 .map(|r| r.is_some())
                 .unwrap_or(false)
             {
@@ -682,7 +756,12 @@ impl<'a> Interpreter<'a> {
     }
 }
 
-fn regex_sub_helper(re: &regex::Regex, replacement: &str, target: &str, global: bool) -> (String, usize) {
+fn regex_sub_helper(
+    re: &regex::Regex,
+    replacement: &str,
+    target: &str,
+    global: bool,
+) -> (String, usize) {
     // Handle & in replacement (matched text)
     let mut count = 0;
 
@@ -752,9 +831,32 @@ fn format_strftime(format: &str, timestamp: u64) -> String {
     let (year, month, day, hour, min, sec, wday, yday) = breakdown_time(secs);
 
     let weekday_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    let month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    let weekday_full = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    let month_full = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let month_names = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let weekday_full = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    ];
+    let month_full = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
 
     let mut result = String::new();
     let mut chars = format.chars().peekable();
@@ -772,8 +874,12 @@ fn format_strftime(format: &str, timestamp: u64) -> String {
                 Some('S') => result.push_str(&format!("{:02}", sec)),
                 Some('a') => result.push_str(weekday_names.get(wday as usize).unwrap_or(&"???")),
                 Some('A') => result.push_str(weekday_full.get(wday as usize).unwrap_or(&"???")),
-                Some('b') | Some('h') => result.push_str(month_names.get((month - 1) as usize).unwrap_or(&"???")),
-                Some('B') => result.push_str(month_full.get((month - 1) as usize).unwrap_or(&"???")),
+                Some('b') | Some('h') => {
+                    result.push_str(month_names.get((month - 1) as usize).unwrap_or(&"???"))
+                }
+                Some('B') => {
+                    result.push_str(month_full.get((month - 1) as usize).unwrap_or(&"???"))
+                }
                 Some('j') => result.push_str(&format!("{:03}", yday)),
                 Some('u') => result.push_str(&format!("{}", if wday == 0 { 7 } else { wday })),
                 Some('w') => result.push_str(&format!("{}", wday)),
@@ -782,7 +888,10 @@ fn format_strftime(format: &str, timestamp: u64) -> String {
                 Some('%') => result.push('%'),
                 Some('n') => result.push('\n'),
                 Some('t') => result.push('\t'),
-                Some(c) => { result.push('%'); result.push(c); }
+                Some(c) => {
+                    result.push('%');
+                    result.push(c);
+                }
                 None => result.push('%'),
             }
         } else {
@@ -829,16 +938,16 @@ fn breakdown_time(secs: i64) -> (i64, i64, i64, i64, i64, i64, i64, i64) {
 
     // Calculate month and day
     let mut month = 1i64;
-    for m in 0..12 {
-        let mut dim = DAYS_IN_MONTH[m];
+    for (m, &dim) in DAYS_IN_MONTH.iter().enumerate() {
+        let mut days_in_month = dim;
         if m == 1 && is_leap_year(year) {
-            dim += 1;
+            days_in_month += 1;
         }
-        if days < dim {
+        if days < days_in_month {
             month = m as i64 + 1;
             break;
         }
-        days -= dim;
+        days -= days_in_month;
     }
     let day = days + 1;
 

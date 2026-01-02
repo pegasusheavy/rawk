@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use std::io::{BufReader, Cursor};
 
 use rawk::{Interpreter, Lexer, Parser};
@@ -109,34 +109,49 @@ fn bench_interpreter(c: &mut Criterion) {
     // Arithmetic operations
     group.bench_function("arithmetic", |b| {
         b.iter(|| {
-            run_awk(black_box("BEGIN { x = 0; for (i = 1; i <= 1000; i++) x += i * 2 - 1; print x }"), "")
+            run_awk(
+                black_box("BEGIN { x = 0; for (i = 1; i <= 1000; i++) x += i * 2 - 1; print x }"),
+                "",
+            )
         })
     });
 
     // String operations
     group.bench_function("string_concat", |b| {
         b.iter(|| {
-            run_awk(black_box(r#"BEGIN { s = ""; for (i = 1; i <= 100; i++) s = s "x"; print length(s) }"#), "")
+            run_awk(
+                black_box(
+                    r#"BEGIN { s = ""; for (i = 1; i <= 100; i++) s = s "x"; print length(s) }"#,
+                ),
+                "",
+            )
         })
     });
 
     // Field splitting
     let input_line = "field1 field2 field3 field4 field5 field6 field7 field8 field9 field10";
     group.bench_function("field_access", |b| {
-        b.iter(|| {
-            run_awk(black_box("{ print $1, $5, $10 }"), black_box(input_line))
-        })
+        b.iter(|| run_awk(black_box("{ print $1, $5, $10 }"), black_box(input_line)))
     });
 
     // Pattern matching
-    let pattern_input = (0..100).map(|i| {
-        if i % 10 == 0 { format!("error line {}", i) }
-        else { format!("normal line {}", i) }
-    }).collect::<Vec<_>>().join("\n");
+    let pattern_input = (0..100)
+        .map(|i| {
+            if i % 10 == 0 {
+                format!("error line {}", i)
+            } else {
+                format!("normal line {}", i)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
     group.bench_function("pattern_matching", |b| {
         b.iter(|| {
-            run_awk(black_box("/error/ { count++ } END { print count }"), black_box(&pattern_input))
+            run_awk(
+                black_box("/error/ { count++ } END { print count }"),
+                black_box(&pattern_input),
+            )
         })
     });
 
@@ -176,15 +191,14 @@ fn bench_e2e_throughput(c: &mut Criterion) {
             .join("\n");
 
         group.throughput(Throughput::Bytes(input.len() as u64));
-        group.bench_with_input(
-            BenchmarkId::new("sum_column", size),
-            &input,
-            |b, input| {
-                b.iter(|| {
-                    run_awk(black_box("{ sum += $1 } END { print sum }"), black_box(input))
-                })
-            }
-        );
+        group.bench_with_input(BenchmarkId::new("sum_column", size), &input, |b, input| {
+            b.iter(|| {
+                run_awk(
+                    black_box("{ sum += $1 } END { print sum }"),
+                    black_box(input),
+                )
+            })
+        });
     }
 
     group.finish();
@@ -195,7 +209,12 @@ fn bench_builtin_functions(c: &mut Criterion) {
 
     group.bench_function("length", |b| {
         b.iter(|| {
-            run_awk(black_box(r#"BEGIN { s = "hello world"; for (i = 1; i <= 1000; i++) x += length(s) }"#), "")
+            run_awk(
+                black_box(
+                    r#"BEGIN { s = "hello world"; for (i = 1; i <= 1000; i++) x += length(s) }"#,
+                ),
+                "",
+            )
         })
     });
 
@@ -231,7 +250,10 @@ fn bench_builtin_functions(c: &mut Criterion) {
 
     group.bench_function("math_functions", |b| {
         b.iter(|| {
-            run_awk(black_box("BEGIN { for (i = 1; i <= 1000; i++) x = sin(i) + cos(i) + sqrt(i) }"), "")
+            run_awk(
+                black_box("BEGIN { for (i = 1; i <= 1000; i++) x = sin(i) + cos(i) + sqrt(i) }"),
+                "",
+            )
         })
     });
 

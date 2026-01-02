@@ -2,7 +2,7 @@
 
 A 100% POSIX-compatible AWK implementation in Rust, with comprehensive GNU AWK (gawk) extension support.
 
-## 🎉 Feature Complete
+## 🎉 Version 0.1.0 Released
 
 **RAWK is now 100% POSIX AWK compliant** with comprehensive GNU AWK extension support. All core AWK functionality is implemented and tested.
 
@@ -10,7 +10,8 @@ A 100% POSIX-compatible AWK implementation in Rust, with comprehensive GNU AWK (
 |----------|--------|
 | POSIX AWK | ✅ Complete |
 | GNU AWK Extensions | ✅ Complete |
-| Test Coverage | 231 tests passing |
+| Test Coverage | 639 tests, 86% coverage |
+| Release Status | 🚀 v0.1.0 |
 
 ---
 

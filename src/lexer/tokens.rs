@@ -12,8 +12,8 @@ pub enum TokenKind {
     Identifier(String),
     Begin,
     End,
-    BeginFile,  // gawk extension
-    EndFile,    // gawk extension
+    BeginFile, // gawk extension
+    EndFile,   // gawk extension
     If,
     Else,
     While,
@@ -33,60 +33,60 @@ pub enum TokenKind {
     In,
 
     // Operators - Arithmetic
-    Plus,        // +
-    Minus,       // -
-    Star,        // *
-    Slash,       // /
-    Percent,     // %
-    Caret,       // ^
+    Plus,    // +
+    Minus,   // -
+    Star,    // *
+    Slash,   // /
+    Percent, // %
+    Caret,   // ^
 
     // Operators - Comparison
-    Less,        // <
-    LessEqual,   // <=
-    Greater,     // >
-    GreaterEqual,// >=
-    Equal,       // ==
-    NotEqual,    // !=
+    Less,         // <
+    LessEqual,    // <=
+    Greater,      // >
+    GreaterEqual, // >=
+    Equal,        // ==
+    NotEqual,     // !=
 
     // Operators - Logical
-    And,         // &&
-    Or,          // ||
-    Not,         // !
+    And, // &&
+    Or,  // ||
+    Not, // !
 
     // Operators - Regex
-    Match,       // ~
-    NotMatch,    // !~
+    Match,    // ~
+    NotMatch, // !~
 
     // Operators - Assignment
-    Assign,      // =
-    PlusAssign,  // +=
-    MinusAssign, // -=
-    StarAssign,  // *=
-    SlashAssign, // /=
+    Assign,        // =
+    PlusAssign,    // +=
+    MinusAssign,   // -=
+    StarAssign,    // *=
+    SlashAssign,   // /=
     PercentAssign, // %=
-    CaretAssign, // ^=
+    CaretAssign,   // ^=
 
     // Operators - Increment/Decrement
-    Increment,   // ++
-    Decrement,   // --
+    Increment, // ++
+    Decrement, // --
 
     // Special operators
-    Dollar,      // $ (field access)
-    Question,    // ?
-    Colon,       // :
-    Pipe,        // |
-    Append,      // >>
+    Dollar,   // $ (field access)
+    Question, // ?
+    Colon,    // :
+    Pipe,     // |
+    Append,   // >>
 
     // Delimiters
-    LeftParen,   // (
-    RightParen,  // )
-    LeftBrace,   // {
-    RightBrace,  // }
-    LeftBracket, // [
-    RightBracket,// ]
-    Semicolon,   // ;
-    Comma,       // ,
-    Newline,     // \n (significant in AWK)
+    LeftParen,    // (
+    RightParen,   // )
+    LeftBrace,    // {
+    RightBrace,   // }
+    LeftBracket,  // [
+    RightBracket, // ]
+    Semicolon,    // ;
+    Comma,        // ,
+    Newline,      // \n (significant in AWK)
 
     // End of file
     Eof,

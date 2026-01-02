@@ -167,10 +167,19 @@ Copyright © 2026 Pegasus Heavy Industries LLC
 rawk has comprehensive test coverage:
 
 ```bash
-cargo test          # Run all 195 tests
-cargo test --test e2e       # E2E tests (135 tests)
+cargo test          # Run all 639 tests
+cargo test --test e2e       # E2E tests (412 tests)
 cargo test --test gawk_compat  # gawk compatibility tests (34 tests)
 ```
+
+### Test Coverage
+
+- Unit tests: 170 (lexer, parser, interpreter, value system)
+- E2E tests: 412 (complete AWK programs)
+- CLI tests: 19 (command-line interface)
+- Compatibility tests: 34 (gawk comparison)
+- Doc tests: 4 (API examples)
+- **Coverage: 86%** (library code)
 
 ## Benchmarking
 

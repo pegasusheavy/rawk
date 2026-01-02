@@ -2,7 +2,7 @@ use std::io::Write;
 
 use crate::ast::*;
 use crate::error::Result;
-use crate::value::{compare_values, Value};
+use crate::value::{Value, compare_values};
 
 use super::Interpreter;
 
@@ -15,7 +15,11 @@ impl<'a> Interpreter<'a> {
     }
 
     /// Evaluate an expression with a writer for function calls that produce output
-    pub fn eval_expr_with_output<W: Write>(&mut self, expr: &Expr, output: &mut W) -> Result<Value> {
+    pub fn eval_expr_with_output<W: Write>(
+        &mut self,
+        expr: &Expr,
+        output: &mut W,
+    ) -> Result<Value> {
         match expr {
             Expr::Number(n, _) => Ok(Value::Number(*n)),
 
@@ -36,24 +40,23 @@ impl<'a> Interpreter<'a> {
             }
 
             Expr::ArrayAccess { array, indices, .. } => {
-                let key_parts: Result<Vec<Value>> = indices.iter()
+                let key_parts: Result<Vec<Value>> = indices
+                    .iter()
                     .map(|e| self.eval_expr_with_output(e, output))
                     .collect();
                 let key = self.make_array_key(&key_parts?);
                 Ok(self.get_array_element(array, &key))
             }
 
-            Expr::Binary { left, op, right, .. } => {
-                self.eval_binary_op_with_output(left, *op, right, output)
-            }
+            Expr::Binary {
+                left, op, right, ..
+            } => self.eval_binary_op_with_output(left, *op, right, output),
 
-            Expr::Unary { op, operand, .. } => {
-                self.eval_unary_op_with_output(*op, operand, output)
-            }
+            Expr::Unary { op, operand, .. } => self.eval_unary_op_with_output(*op, operand, output),
 
-            Expr::Assign { target, op, value, .. } => {
-                self.eval_assignment_with_output(target, *op, value, output)
-            }
+            Expr::Assign {
+                target, op, value, ..
+            } => self.eval_assignment_with_output(target, *op, value, output),
 
             Expr::PreIncrement(expr, _) => {
                 let current = self.eval_expr_with_output(expr, output)?.to_number();
@@ -83,7 +86,12 @@ impl<'a> Interpreter<'a> {
                 Ok(Value::Number(current))
             }
 
-            Expr::Ternary { condition, then_expr, else_expr, .. } => {
+            Expr::Ternary {
+                condition,
+                then_expr,
+                else_expr,
+                ..
+            } => {
                 let cond = self.eval_expr_with_output(condition, output)?;
                 if cond.is_truthy() {
                     self.eval_expr_with_output(then_expr, output)
@@ -92,19 +100,31 @@ impl<'a> Interpreter<'a> {
                 }
             }
 
-            Expr::Call { name, args, location } => {
-                self.call_function(name, args, *location, output)
-            }
+            Expr::Call {
+                name,
+                args,
+                location,
+            } => self.call_function(name, args, *location, output),
 
             Expr::InArray { key, array, .. } => {
-                let key_parts: Result<Vec<Value>> = key.iter()
+                let key_parts: Result<Vec<Value>> = key
+                    .iter()
                     .map(|e| self.eval_expr_with_output(e, output))
                     .collect();
                 let key_str = self.make_array_key(&key_parts?);
-                Ok(Value::Number(if self.array_key_exists(array, &key_str) { 1.0 } else { 0.0 }))
+                Ok(Value::Number(if self.array_key_exists(array, &key_str) {
+                    1.0
+                } else {
+                    0.0
+                }))
             }
 
-            Expr::Match { expr, pattern, negated, .. } => {
+            Expr::Match {
+                expr,
+                pattern,
+                negated,
+                ..
+            } => {
                 let string = self.eval_expr_with_output(expr, output)?.to_string_val();
                 let pattern_str = match pattern.as_ref() {
                     Expr::Regex(p, _) => p.clone(),
@@ -124,9 +144,11 @@ impl<'a> Interpreter<'a> {
                 Ok(Value::from_string(result))
             }
 
-            Expr::Getline { var, input, location } => {
-                self.eval_getline(var.as_ref(), input.as_ref(), *location)
-            }
+            Expr::Getline {
+                var,
+                input,
+                location,
+            } => self.eval_getline(var.as_ref(), input.as_ref(), *location),
 
             Expr::Group(expr, _) => self.eval_expr_with_output(expr, output),
         }
@@ -184,12 +206,36 @@ impl<'a> Interpreter<'a> {
                 }
             }
             BinaryOp::Pow => Ok(Value::Number(l.to_number().powf(r.to_number()))),
-            BinaryOp::Lt => Ok(Value::Number(if compare_values(&l, &r).is_lt() { 1.0 } else { 0.0 })),
-            BinaryOp::Le => Ok(Value::Number(if compare_values(&l, &r).is_le() { 1.0 } else { 0.0 })),
-            BinaryOp::Gt => Ok(Value::Number(if compare_values(&l, &r).is_gt() { 1.0 } else { 0.0 })),
-            BinaryOp::Ge => Ok(Value::Number(if compare_values(&l, &r).is_ge() { 1.0 } else { 0.0 })),
-            BinaryOp::Eq => Ok(Value::Number(if compare_values(&l, &r).is_eq() { 1.0 } else { 0.0 })),
-            BinaryOp::Ne => Ok(Value::Number(if compare_values(&l, &r).is_ne() { 1.0 } else { 0.0 })),
+            BinaryOp::Lt => Ok(Value::Number(if compare_values(&l, &r).is_lt() {
+                1.0
+            } else {
+                0.0
+            })),
+            BinaryOp::Le => Ok(Value::Number(if compare_values(&l, &r).is_le() {
+                1.0
+            } else {
+                0.0
+            })),
+            BinaryOp::Gt => Ok(Value::Number(if compare_values(&l, &r).is_gt() {
+                1.0
+            } else {
+                0.0
+            })),
+            BinaryOp::Ge => Ok(Value::Number(if compare_values(&l, &r).is_ge() {
+                1.0
+            } else {
+                0.0
+            })),
+            BinaryOp::Eq => Ok(Value::Number(if compare_values(&l, &r).is_eq() {
+                1.0
+            } else {
+                0.0
+            })),
+            BinaryOp::Ne => Ok(Value::Number(if compare_values(&l, &r).is_ne() {
+                1.0
+            } else {
+                0.0
+            })),
             BinaryOp::Concat => {
                 let mut s = l.to_string_val();
                 s.push_str(&r.to_string_val());
@@ -263,7 +309,8 @@ impl<'a> Interpreter<'a> {
                 if !self.input_files.contains_key(&filename) {
                     match std::fs::File::open(&filename) {
                         Ok(file) => {
-                            self.input_files.insert(filename.clone(), std::io::BufReader::new(file));
+                            self.input_files
+                                .insert(filename.clone(), std::io::BufReader::new(file));
                         }
                         Err(_) => return Ok(Value::Number(-1.0)), // Error
                     }
@@ -305,10 +352,13 @@ impl<'a> Interpreter<'a> {
                     {
                         Ok(mut child) => {
                             let stdout = child.stdout.take().unwrap();
-                            self.pipes.insert(cmd.clone(), super::PipeInput {
-                                child,
-                                reader: std::io::BufReader::new(stdout),
-                            });
+                            self.pipes.insert(
+                                cmd.clone(),
+                                super::PipeInput {
+                                    child,
+                                    reader: std::io::BufReader::new(stdout),
+                                },
+                            );
                         }
                         Err(_) => return Ok(Value::Number(-1.0)), // Error
                     }
@@ -350,7 +400,8 @@ impl<'a> Interpreter<'a> {
                 self.set_field(index, value.to_string_val());
             }
             Expr::ArrayAccess { array, indices, .. } => {
-                let key_parts: Result<Vec<Value>> = indices.iter().map(|e| self.eval_expr(e)).collect();
+                let key_parts: Result<Vec<Value>> =
+                    indices.iter().map(|e| self.eval_expr(e)).collect();
                 let key = self.make_array_key(&key_parts?);
                 self.set_array_element(array, &key, value);
             }

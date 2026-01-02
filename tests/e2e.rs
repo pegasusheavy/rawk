@@ -18,10 +18,14 @@ fn run_awk(program: &str, input: &str) -> Result<String, String> {
 
     if input.is_empty() {
         let inputs: Vec<BufReader<Cursor<&str>>> = vec![];
-        interpreter.run(inputs, &mut output).map_err(|e| e.to_string())?;
+        interpreter
+            .run(inputs, &mut output)
+            .map_err(|e| e.to_string())?;
     } else {
         let inputs = vec![BufReader::new(Cursor::new(input))];
-        interpreter.run(inputs, &mut output).map_err(|e| e.to_string())?;
+        interpreter
+            .run(inputs, &mut output)
+            .map_err(|e| e.to_string())?;
     }
 
     String::from_utf8(output).map_err(|e| e.to_string())
@@ -40,10 +44,14 @@ fn run_awk_with_fs(program: &str, input: &str, fs: &str) -> Result<String, Strin
 
     if input.is_empty() {
         let inputs: Vec<BufReader<Cursor<&str>>> = vec![];
-        interpreter.run(inputs, &mut output).map_err(|e| e.to_string())?;
+        interpreter
+            .run(inputs, &mut output)
+            .map_err(|e| e.to_string())?;
     } else {
         let inputs = vec![BufReader::new(Cursor::new(input))];
-        interpreter.run(inputs, &mut output).map_err(|e| e.to_string())?;
+        interpreter
+            .run(inputs, &mut output)
+            .map_err(|e| e.to_string())?;
     }
 
     String::from_utf8(output).map_err(|e| e.to_string())
@@ -291,7 +299,11 @@ fn test_if_false() {
 #[test]
 fn test_if_else() {
     // Use block syntax instead of semicolon before else
-    let output = run_awk(r#"BEGIN { if (0) { print "yes" } else { print "no" } }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { if (0) { print "yes" } else { print "no" } }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "no\n");
 }
 
@@ -326,8 +338,11 @@ fn test_do_while() {
 
 #[test]
 fn test_break() {
-    let output = run_awk("BEGIN { for (i = 1; i <= 10; i++) { if (i > 3) break; print i } }", "")
-        .unwrap();
+    let output = run_awk(
+        "BEGIN { for (i = 1; i <= 10; i++) { if (i > 3) break; print i } }",
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n2\n3\n");
 }
 
@@ -383,7 +398,11 @@ fn test_negated_regex() {
 
 #[test]
 fn test_range_pattern() {
-    let output = run_awk("/start/,/end/ { print }", "before\nstart\nmiddle\nend\nafter").unwrap();
+    let output = run_awk(
+        "/start/,/end/ { print }",
+        "before\nstart\nmiddle\nend\nafter",
+    )
+    .unwrap();
     assert_eq!(output, "start\nmiddle\nend\n");
 }
 
@@ -399,18 +418,17 @@ fn test_array_assignment() {
 
 #[test]
 fn test_array_string_keys() {
-    let output =
-        run_awk(r#"BEGIN { a["foo"] = 1; a["bar"] = 2; print a["foo"], a["bar"] }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { a["foo"] = 1; a["bar"] = 2; print a["foo"], a["bar"] }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1 2\n");
 }
 
 #[test]
 fn test_array_in_operator() {
-    let output = run_awk(
-        r#"BEGIN { a[1] = 1; print (1 in a), (2 in a) }"#,
-        "",
-    )
-    .unwrap();
+    let output = run_awk(r#"BEGIN { a[1] = 1; print (1 in a), (2 in a) }"#, "").unwrap();
     assert_eq!(output, "1 0\n");
 }
 
@@ -808,8 +826,11 @@ fn test_sum_column() {
 
 #[test]
 fn test_average() {
-    let output =
-        run_awk("{ sum += $1; count++ } END { print sum / count }", "10\n20\n30").unwrap();
+    let output = run_awk(
+        "{ sum += $1; count++ } END { print sum / count }",
+        "10\n20\n30",
+    )
+    .unwrap();
     assert_eq!(output, "20\n");
 }
 
@@ -921,13 +942,21 @@ fn test_match_with_regex_literal() {
 
 #[test]
 fn test_match_rstart_rlength() {
-    let output = run_awk("BEGIN { match(\"hello world\", /wor/); print RSTART, RLENGTH }", "").unwrap();
+    let output = run_awk(
+        "BEGIN { match(\"hello world\", /wor/); print RSTART, RLENGTH }",
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "7 3\n");
 }
 
 #[test]
 fn test_split_with_regex_literal() {
-    let output = run_awk("BEGIN { n = split(\"a:b:c\", arr, /:/); print n, arr[1], arr[2], arr[3] }", "").unwrap();
+    let output = run_awk(
+        "BEGIN { n = split(\"a:b:c\", arr, /:/); print n, arr[1], arr[2], arr[3] }",
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "3 a b c\n");
 }
 
@@ -937,7 +966,11 @@ fn test_split_with_regex_literal() {
 
 #[test]
 fn test_rand() {
-    let output = run_awk("BEGIN { x = rand(); print (x >= 0 && x < 1) ? \"ok\" : \"fail\" }", "").unwrap();
+    let output = run_awk(
+        "BEGIN { x = rand(); print (x >= 0 && x < 1) ? \"ok\" : \"fail\" }",
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "ok\n");
 }
 
@@ -973,7 +1006,11 @@ fn test_else_after_semicolon_false() {
 fn test_delete_entire_array() {
     let output = run_awk("BEGIN { a[1]=1; a[2]=2; delete a; print length(a) }", "").unwrap();
     // After deleting, iterating should find nothing
-    let output2 = run_awk("BEGIN { a[1]=1; a[2]=2; delete a; for(i in a) c++; print c+0 }", "").unwrap();
+    let output2 = run_awk(
+        "BEGIN { a[1]=1; a[2]=2; delete a; for(i in a) c++; print c+0 }",
+        "",
+    )
+    .unwrap();
     assert!(output == "0\n" || output2 == "0\n");
 }
 
@@ -983,19 +1020,27 @@ fn test_delete_entire_array() {
 
 #[test]
 fn test_function_with_print() {
-    let output = run_awk("
+    let output = run_awk(
+        "
         function greet(name) { print \"Hello, \" name }
         BEGIN { greet(\"World\") }
-    ", "").unwrap();
+    ",
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "Hello, World\n");
 }
 
 #[test]
 fn test_function_with_multiple_prints() {
-    let output = run_awk("
+    let output = run_awk(
+        "
         function count_to(n) { for (i=1; i<=n; i++) print i }
         BEGIN { count_to(3) }
-    ", "").unwrap();
+    ",
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n2\n3\n");
 }
 
@@ -1143,11 +1188,15 @@ fn test_pipe_getline_basic() {
 
 #[test]
 fn test_pipe_getline_multiple() {
-    let output = run_awk(r#"BEGIN {
+    let output = run_awk(
+        r#"BEGIN {
         while (("echo -e 'a\nb\nc'" | getline line) > 0) {
             print "got:", line
         }
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     // The output depends on the shell's echo behavior
     assert!(output.contains("got:"));
 }
@@ -1164,14 +1213,18 @@ fn test_pipe_getline_no_var() {
 #[test]
 fn test_array_in_function() {
     // Arrays should be passed by reference (modification visible outside)
-    let output = run_awk(r#"
+    let output = run_awk(
+        r#"
         function modify(arr) { arr[1] = "modified" }
         BEGIN {
             a[1] = "original"
             modify(a)
             print a[1]
         }
-    "#, "").unwrap();
+    "#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "modified\n");
 }
 
@@ -1191,7 +1244,11 @@ fn test_filename_variable() {
 fn test_utf8_length() {
     // Length should count characters, not bytes
     // "hello" is 5 chars, "héllo" is 5 chars, "你好" is 2 chars
-    let output = run_awk(r#"BEGIN { print length("hello"), length("héllo"), length("你好") }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { print length("hello"), length("héllo"), length("你好") }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "5 5 2\n");
 }
 
@@ -1250,7 +1307,11 @@ fn test_mktime_date() {
 #[test]
 fn test_gensub_global() {
     // gensub with global replacement
-    let output = run_awk(r#"BEGIN { print gensub("o", "0", "g", "hello world") }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { print gensub("o", "0", "g", "hello world") }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "hell0 w0rld\n");
 }
 
@@ -1271,7 +1332,11 @@ fn test_gensub_nth() {
 #[test]
 fn test_gensub_returns_original() {
     // gensub returns result, doesn't modify original (unlike gsub)
-    let output = run_awk(r#"BEGIN { x = "hello"; y = gensub("l", "L", "g", x); print x, y }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { x = "hello"; y = gensub("l", "L", "g", x); print x, y }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "hello heLLo\n");
 }
 
@@ -1294,36 +1359,48 @@ fn test_endfile() {
 #[test]
 fn test_asort() {
     // asort sorts array values
-    let output = run_awk(r#"BEGIN {
+    let output = run_awk(
+        r#"BEGIN {
         a[1] = "cherry"
         a[2] = "apple"
         a[3] = "banana"
         n = asort(a)
         for (i = 1; i <= n; i++) print a[i]
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "apple\nbanana\ncherry\n");
 }
 
 #[test]
 fn test_asorti() {
     // asorti sorts array indices
-    let output = run_awk(r#"BEGIN {
+    let output = run_awk(
+        r#"BEGIN {
         a["cherry"] = 1
         a["apple"] = 2
         a["banana"] = 3
         n = asorti(a, b)
         for (i = 1; i <= n; i++) print b[i]
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "apple\nbanana\ncherry\n");
 }
 
 #[test]
 fn test_patsplit() {
     // patsplit extracts matching fields
-    let output = run_awk(r#"BEGIN {
+    let output = run_awk(
+        r#"BEGIN {
         n = patsplit("the:quick:fox", a, "[a-z]+")
         for (i = 1; i <= n; i++) print a[i]
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "the\nquick\nfox\n");
 }
 
@@ -1332,28 +1409,44 @@ fn test_patsplit() {
 #[test]
 fn test_fpat_basic() {
     // FPAT matches field content, not separators
-    let output = run_awk(r#"BEGIN { FPAT = "[^,]+" } { print $1, $2 }"#, "hello,world").unwrap();
+    let output = run_awk(
+        r#"BEGIN { FPAT = "[^,]+" } { print $1, $2 }"#,
+        "hello,world",
+    )
+    .unwrap();
     assert_eq!(output, "hello world\n");
 }
 
 #[test]
 fn test_fpat_word_pattern() {
     // FPAT matches word characters
-    let output = run_awk(r#"BEGIN { FPAT = "[A-Za-z]+" } { print $1, $2, $3 }"#, "Hello123World456Test").unwrap();
+    let output = run_awk(
+        r#"BEGIN { FPAT = "[A-Za-z]+" } { print $1, $2, $3 }"#,
+        "Hello123World456Test",
+    )
+    .unwrap();
     assert_eq!(output, "Hello World Test\n");
 }
 
 #[test]
 fn test_fieldwidths() {
     // FIELDWIDTHS splits by character positions
-    let output = run_awk(r#"BEGIN { FIELDWIDTHS = "3 4 3" } { print $1, $2, $3 }"#, "abcdefghij").unwrap();
+    let output = run_awk(
+        r#"BEGIN { FIELDWIDTHS = "3 4 3" } { print $1, $2, $3 }"#,
+        "abcdefghij",
+    )
+    .unwrap();
     assert_eq!(output, "abc defg hij\n");
 }
 
 #[test]
 fn test_fieldwidths_short_record() {
     // FIELDWIDTHS handles records shorter than specified widths
-    let output = run_awk(r#"BEGIN { FIELDWIDTHS = "5 5 5" } { print NF }"#, "abcdefgh").unwrap();
+    let output = run_awk(
+        r#"BEGIN { FIELDWIDTHS = "5 5 5" } { print NF }"#,
+        "abcdefgh",
+    )
+    .unwrap();
     assert_eq!(output, "2\n");
 }
 
@@ -1435,7 +1528,11 @@ fn test_substr_no_length() {
 
 #[test]
 fn test_match_no_match() {
-    let output = run_awk(r#"BEGIN { print match("hello", "xyz"), RSTART, RLENGTH }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { print match("hello", "xyz"), RSTART, RLENGTH }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "0 0 -1\n");
 }
 
@@ -1448,13 +1545,21 @@ fn test_split_default_fs() {
 
 #[test]
 fn test_gsub_returns_count() {
-    let output = run_awk(r#"BEGIN { x = "aaa"; n = gsub("a", "b", x); print n, x }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { x = "aaa"; n = gsub("a", "b", x); print n, x }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "3 bbb\n");
 }
 
 #[test]
 fn test_sub_returns_count() {
-    let output = run_awk(r#"BEGIN { x = "aaa"; n = sub("a", "b", x); print n, x }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { x = "aaa"; n = sub("a", "b", x); print n, x }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1 baa\n");
 }
 
@@ -1497,7 +1602,7 @@ fn test_nf_zero() {
 fn test_negative_field_number() {
     // In AWK, $-1 and other negative indices typically return $0
     let output = run_awk(r#"{ print $(-1) }"#, "a b c").unwrap();
-    assert_eq!(output, "a b c\n");  // Returns $0
+    assert_eq!(output, "a b c\n"); // Returns $0
 }
 
 #[test]
@@ -1508,7 +1613,11 @@ fn test_array_multidim() {
 
 #[test]
 fn test_delete_entire_array_iteration() {
-    let output = run_awk(r#"BEGIN { a[1]=1; a[2]=2; delete a; for(k in a) n++; print n+0 }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { a[1]=1; a[2]=2; delete a; for(k in a) n++; print n+0 }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "0\n");
 }
 
@@ -1577,20 +1686,32 @@ fn test_do_while_false() {
 
 #[test]
 fn test_for_empty_parts() {
-    let output = run_awk(r#"BEGIN { i=0; for (;;) { if (++i > 2) break; print i } }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { i=0; for (;;) { if (++i > 2) break; print i } }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n2\n");
 }
 
 #[test]
 fn test_return_no_value() {
-    let output = run_awk(r#"function f() { return } BEGIN { x = f(); print x+0 }"#, "").unwrap();
+    let output = run_awk(
+        r#"function f() { return } BEGIN { x = f(); print x+0 }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "0\n");
 }
 
 #[test]
 fn test_function_local_vars() {
     // Extra params act as local variables
-    let output = run_awk(r#"function f(a,    local) { local = 5; return local } BEGIN { print f(1) }"#, "").unwrap();
+    let output = run_awk(
+        r#"function f(a,    local) { local = 5; return local } BEGIN { print f(1) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "5\n");
 }
 
@@ -1629,7 +1750,7 @@ fn test_print_redirect_append() {
 fn test_print_redirect_pipe() {
     // print through pipe
     let output = run_awk(r#"BEGIN { print "hello" | "cat" }"#, "").unwrap();
-    assert_eq!(output, "");  // output goes to pipe, not stdout
+    assert_eq!(output, ""); // output goes to pipe, not stdout
 }
 
 #[test]
@@ -1641,7 +1762,11 @@ fn test_printf_redirect() {
 #[test]
 fn test_getline_from_file() {
     // getline from file
-    let output = run_awk(r#"BEGIN { while ((getline line < "/etc/hostname") > 0) { print line; break } }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { while ((getline line < "/etc/hostname") > 0) { print line; break } }"#,
+        "",
+    )
+    .unwrap();
     assert!(!output.is_empty());
 }
 
@@ -1662,10 +1787,10 @@ fn test_strftime_formats() {
     // Test various strftime format specifiers
     let output = run_awk(r#"BEGIN { print strftime("%Y", 0) }"#, "").unwrap();
     assert_eq!(output, "1970\n");
-    
+
     let output = run_awk(r#"BEGIN { print strftime("%m", 0) }"#, "").unwrap();
     assert_eq!(output, "01\n");
-    
+
     let output = run_awk(r#"BEGIN { print strftime("%d", 0) }"#, "").unwrap();
     assert_eq!(output, "01\n");
 }
@@ -1673,7 +1798,7 @@ fn test_strftime_formats() {
 #[test]
 fn test_strftime_weekday() {
     let output = run_awk(r#"BEGIN { print strftime("%a", 0) }"#, "").unwrap();
-    assert_eq!(output, "Thu\n");  // 1970-01-01 was Thursday
+    assert_eq!(output, "Thu\n"); // 1970-01-01 was Thursday
 }
 
 #[test]
@@ -1685,7 +1810,7 @@ fn test_strftime_month_name() {
 #[test]
 fn test_mktime_with_time() {
     let output = run_awk(r#"BEGIN { print mktime("1970 1 1 1 0 0") }"#, "").unwrap();
-    assert_eq!(output, "3600\n");  // 1 hour = 3600 seconds
+    assert_eq!(output, "3600\n"); // 1 hour = 3600 seconds
 }
 
 #[test]
@@ -1714,16 +1839,24 @@ fn test_asort_empty() {
 
 #[test]
 fn test_asorti_with_dest() {
-    let output = run_awk(r#"BEGIN { a["z"]=1; a["a"]=2; n = asorti(a, b); print n, b[1] }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { a["z"]=1; a["a"]=2; n = asorti(a, b); print n, b[1] }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "2 a\n");
 }
 
 #[test]
 fn test_patsplit_with_seps() {
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(
+        r#"BEGIN {
         n = patsplit("a1b2c", arr, "[0-9]+", seps)
         print n, arr[1], arr[2], seps[0], seps[1]
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "2 1 2 a b\n");
 }
 
@@ -1736,7 +1869,7 @@ fn test_comparison_mixed_types() {
 
 #[test]
 fn test_comparison_string_concat() {
-    // String comparison  
+    // String comparison
     let output = run_awk(r#"BEGIN { print ("aa" < "ab") }"#, "").unwrap();
     assert_eq!(output, "1\n");
 }
@@ -1749,7 +1882,11 @@ fn test_regex_special_chars() {
 
 #[test]
 fn test_regex_case_sensitive() {
-    let output = run_awk(r#"/Hello/ { print "yes" } !/Hello/ { print "no" }"#, "hello").unwrap();
+    let output = run_awk(
+        r#"/Hello/ { print "yes" } !/Hello/ { print "no" }"#,
+        "hello",
+    )
+    .unwrap();
     assert_eq!(output, "no\n");
 }
 
@@ -1769,12 +1906,16 @@ fn test_ors() {
 #[test]
 fn test_subsep() {
     let output = run_awk(r#"BEGIN { a[1,2] = "x"; for (k in a) print k }"#, "").unwrap();
-    assert!(output.contains("\x1c"));  // Default SUBSEP
+    assert!(output.contains("\x1c")); // Default SUBSEP
 }
 
 #[test]
 fn test_custom_subsep() {
-    let output = run_awk(r#"BEGIN { SUBSEP = ":"; a[1,2] = "x"; for (k in a) print k }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { SUBSEP = ":"; a[1,2] = "x"; for (k in a) print k }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1:2\n");
 }
 
@@ -1846,7 +1987,11 @@ fn test_expr_pattern() {
 
 #[test]
 fn test_beginfile_endfile() {
-    let output = run_awk(r#"BEGINFILE { print "start" } ENDFILE { print "end" }"#, "test").unwrap();
+    let output = run_awk(
+        r#"BEGINFILE { print "start" } ENDFILE { print "end" }"#,
+        "test",
+    )
+    .unwrap();
     assert!(output.contains("start") && output.contains("end"));
 }
 
@@ -1866,7 +2011,7 @@ fn test_modulo_negative() {
 fn test_division_by_zero() {
     // Division by zero in AWK typically returns inf
     let output = run_awk(r#"BEGIN { x = 1/0; print (x > 0) }"#, "").unwrap();
-    assert_eq!(output, "1\n");  // inf > 0
+    assert_eq!(output, "1\n"); // inf > 0
 }
 
 #[test]
@@ -1903,7 +2048,11 @@ fn test_not_match_with_string() {
 #[test]
 fn test_in_with_multi_subscript() {
     // Use SUBSEP to form the key for multi-dimensional access
-    let output = run_awk(r#"BEGIN { a[1,2]=1; key = 1 SUBSEP 2; print (key in a) }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { a[1,2]=1; key = 1 SUBSEP 2; print (key in a) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n");
 }
 
@@ -1915,8 +2064,18 @@ fn test_delete_non_existent() {
 
 #[test]
 fn test_printf_all_formats() {
-    let output = run_awk(r#"BEGIN { printf "%c%d%e%f%g%o%s%x%%\n", 65, 42, 1.5, 2.5, 3.5, 8, "hi", 255 }"#, "").unwrap();
-    assert!(output.contains("A") && output.contains("42") && output.contains("hi") && output.contains("ff") && output.contains("%"));
+    let output = run_awk(
+        r#"BEGIN { printf "%c%d%e%f%g%o%s%x%%\n", 65, 42, 1.5, 2.5, 3.5, 8, "hi", 255 }"#,
+        "",
+    )
+    .unwrap();
+    assert!(
+        output.contains("A")
+            && output.contains("42")
+            && output.contains("hi")
+            && output.contains("ff")
+            && output.contains("%")
+    );
 }
 
 #[test]
@@ -2060,7 +2219,11 @@ fn test_int_negative() {
 #[test]
 fn test_array_count_loop() {
     // Count array elements with for-in
-    let output = run_awk(r#"BEGIN { a[1]=1; a[2]=2; a[3]=3; for(k in a) n++; print n }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { a[1]=1; a[2]=2; a[3]=3; for(k in a) n++; print n }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "3\n");
 }
 
@@ -2079,13 +2242,21 @@ fn test_sub_no_third_arg() {
 
 #[test]
 fn test_match_positions() {
-    let output = run_awk(r#"BEGIN { match("hello world", "wor"); print RSTART, RLENGTH }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { match("hello world", "wor"); print RSTART, RLENGTH }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "7 3\n");
 }
 
 #[test]
 fn test_split_with_regex() {
-    let output = run_awk(r#"BEGIN { n = split("a1b2c", a, "[0-9]"); print n, a[1], a[3] }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { n = split("a1b2c", a, "[0-9]"); print n, a[1], a[3] }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "3 a c\n");
 }
 
@@ -2109,7 +2280,11 @@ fn test_sprintf_char() {
 
 #[test]
 fn test_sprintf_scientific() {
-    let output = run_awk(r#"BEGIN { s = sprintf("%e", 1234.5); print (s ~ "e") }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { s = sprintf("%e", 1234.5); print (s ~ "e") }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n");
 }
 
@@ -2140,7 +2315,7 @@ fn test_substr_negative_length() {
 #[test]
 fn test_system_false() {
     let output = run_awk(r#"BEGIN { print system("false") }"#, "").unwrap();
-    assert!(output.trim() != "0");  // false returns non-zero
+    assert!(output.trim() != "0"); // false returns non-zero
 }
 
 #[test]
@@ -2151,13 +2326,21 @@ fn test_rand_range() {
 
 #[test]
 fn test_srand_returns_prev() {
-    let output = run_awk(r#"BEGIN { srand(1); prev = srand(2); print (prev > 0) }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { srand(1); prev = srand(2); print (prev > 0) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n");
 }
 
 #[test]
 fn test_close_success() {
-    let output = run_awk(r#"BEGIN { print "test" > "/tmp/rawk_test_close"; print close("/tmp/rawk_test_close") }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { print "test" > "/tmp/rawk_test_close"; print close("/tmp/rawk_test_close") }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "0\n");
 }
 
@@ -2165,7 +2348,11 @@ fn test_close_success() {
 
 #[test]
 fn test_if_else_block() {
-    let output = run_awk(r#"BEGIN { if (0) { print "yes" } else { print "no" } }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { if (0) { print "yes" } else { print "no" } }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "no\n");
 }
 
@@ -2228,7 +2415,11 @@ fn test_array_in_loop() {
 
 #[test]
 fn test_function_array_param() {
-    let output = run_awk(r#"function f(arr) { return arr[1] } BEGIN { a[1]="x"; print f(a) }"#, "").unwrap();
+    let output = run_awk(
+        r#"function f(arr) { return arr[1] } BEGIN { a[1]="x"; print f(a) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "x\n");
 }
 
@@ -2257,7 +2448,7 @@ fn test_very_long_string() {
     let long = "a".repeat(1000);
     let program = format!(r#"BEGIN {{ print "{}" }}"#, long);
     let output = run_awk(&program, "").unwrap();
-    assert_eq!(output.len(), 1001);  // 1000 chars + newline
+    assert_eq!(output.len(), 1001); // 1000 chars + newline
 }
 
 #[test]
@@ -2328,14 +2519,18 @@ fn test_split_single_char_sep() {
 
 #[test]
 fn test_getline_from_command() {
-    let output = run_awk(r#"BEGIN { cmd = "echo hello"; cmd | getline x; print x }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { cmd = "echo hello"; cmd | getline x; print x }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "hello\n");
 }
 
 #[test]
 fn test_close_pipe() {
     let output = run_awk(r#"BEGIN { print "x" | "cat"; close("cat") }"#, "").unwrap();
-    assert_eq!(output, "");  // Output goes to pipe
+    assert_eq!(output, ""); // Output goes to pipe
 }
 
 #[test]
@@ -2354,19 +2549,31 @@ fn test_gensub_nth_occurrence() {
 
 #[test]
 fn test_asort_numeric() {
-    let output = run_awk(r#"BEGIN { a[1]=3; a[2]=1; a[3]=2; asort(a); print a[1], a[2], a[3] }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { a[1]=3; a[2]=1; a[3]=2; asort(a); print a[1], a[2], a[3] }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1 2 3\n");
 }
 
 #[test]
 fn test_asorti_string() {
-    let output = run_awk(r#"BEGIN { a["c"]=1; a["a"]=2; a["b"]=3; asorti(a); print a[1], a[2], a[3] }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { a["c"]=1; a["a"]=2; a["b"]=3; asorti(a); print a[1], a[2], a[3] }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "a b c\n");
 }
 
 #[test]
 fn test_patsplit_simple() {
-    let output = run_awk(r#"BEGIN { n = patsplit("the:quick:fox", a, "[a-z]+"); print n }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { n = patsplit("the:quick:fox", a, "[a-z]+"); print n }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "3\n");
 }
 
@@ -2405,7 +2612,7 @@ fn test_patsplit_error() {
 #[test]
 fn test_gsub_with_field() {
     let output = run_awk(r#"{ gsub(/a/, "X", $2); print }"#, "aa bb aa").unwrap();
-    assert_eq!(output, "aa bb aa\n");  // $2 has no 'a'
+    assert_eq!(output, "aa bb aa\n"); // $2 has no 'a'
 }
 
 #[test]
@@ -2464,23 +2671,31 @@ fn test_split_whitespace_default() {
 
 #[test]
 fn test_close_file_success() {
-    let output = run_awk(r#"BEGIN { 
-        print "test" > "/tmp/rawk_close_test" 
+    let output = run_awk(
+        r#"BEGIN {
+        print "test" > "/tmp/rawk_close_test"
         ret = close("/tmp/rawk_close_test")
-        print ret 
-    }"#, "").unwrap();
+        print ret
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "0\n");
 }
 
 #[test]
 fn test_system_with_output() {
     let output = run_awk(r#"BEGIN { system("echo hello >&2") }"#, "").unwrap();
-    assert_eq!(output, "");  // Output goes to system's stdout
+    assert_eq!(output, ""); // Output goes to system's stdout
 }
 
 #[test]
 fn test_srand_no_arg() {
-    let output = run_awk(r#"BEGIN { srand(); x = rand(); print (x >= 0 && x < 1) }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { srand(); x = rand(); print (x >= 0 && x < 1) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n");
 }
 
@@ -2541,37 +2756,53 @@ fn test_mktime_leap_year() {
 
 #[test]
 fn test_strftime_all_specifiers() {
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(
+        r#"BEGIN {
         t = 1000000000  # Sept 9, 2001
         s = strftime("%Y-%m-%d", t)
         print (s ~ "2001")
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n");
 }
 
 #[test]
 fn test_patsplit_no_match() {
-    let output = run_awk(r#"BEGIN { n = patsplit("hello", a, "[0-9]+"); print n }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { n = patsplit("hello", a, "[0-9]+"); print n }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "0\n");
 }
 
 #[test]
 fn test_asort_with_dest() {
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(
+        r#"BEGIN {
         a[1] = "c"; a[2] = "a"; a[3] = "b"
         n = asort(a, b)
         print n, b[1], b[2], b[3]
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "3 a b c\n");
 }
 
 #[test]
 fn test_asorti_basic() {
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(
+        r#"BEGIN {
         a["z"] = 1; a["a"] = 2; a["m"] = 3
         n = asorti(a)
         print n
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "3\n");
 }
 
@@ -2591,19 +2822,31 @@ fn test_for_empty_update() {
 
 #[test]
 fn test_continue_in_while() {
-    let output = run_awk(r#"BEGIN { i=0; while (i<5) { i++; if (i==3) continue; print i } }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { i=0; while (i<5) { i++; if (i==3) continue; print i } }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n2\n4\n5\n");
 }
 
 #[test]
 fn test_break_in_do_while() {
-    let output = run_awk(r#"BEGIN { i=0; do { i++; if (i==2) break } while (i<5); print i }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { i=0; do { i++; if (i==2) break } while (i<5); print i }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "2\n");
 }
 
 #[test]
 fn test_function_recursion_deep() {
-    let output = run_awk(r#"function sum(n) { return n<=0 ? 0 : n+sum(n-1) } BEGIN { print sum(10) }"#, "").unwrap();
+    let output = run_awk(
+        r#"function sum(n) { return n<=0 ? 0 : n+sum(n-1) } BEGIN { print sum(10) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "55\n");
 }
 
@@ -2615,7 +2858,11 @@ fn test_function_no_params() {
 
 #[test]
 fn test_function_many_params() {
-    let output = run_awk(r#"function f(a,b,c,d,e) { return a+b+c+d+e } BEGIN { print f(1,2,3,4,5) }"#, "").unwrap();
+    let output = run_awk(
+        r#"function f(a,b,c,d,e) { return a+b+c+d+e } BEGIN { print f(1,2,3,4,5) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "15\n");
 }
 
@@ -2633,12 +2880,16 @@ fn test_field_large_index() {
 
 #[test]
 fn test_array_delete_in_loop() {
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(
+        r#"BEGIN {
         a[1]=1; a[2]=2; a[3]=3
         for (k in a) { if (k==2) delete a[k] }
         for (k in a) n++
-        print n 
-    }"#, "").unwrap();
+        print n
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "2\n");
 }
 
@@ -2651,18 +2902,26 @@ fn test_expr_statement() {
 
 #[test]
 fn test_print_to_multiple_files() {
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(
+        r#"BEGIN {
         print "a" > "/tmp/rawk_test_a"
         print "b" > "/tmp/rawk_test_b"
         print "done"
-    }"#, "").unwrap();
+    }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "done\n");
 }
 
 #[test]
 fn test_getline_return_value() {
     // getline returns 1 on success, 0 on EOF, -1 on error
-    let output = run_awk(r#"BEGIN { ret = (getline x < "/etc/hostname"); print (ret >= 0) }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { ret = (getline x < "/etc/hostname"); print (ret >= 0) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n");
 }
 
@@ -2694,21 +2953,33 @@ fn test_comma_fs_basic() {
 
 #[test]
 fn test_fieldwidths_basic() {
-    let output = run_awk(r#"BEGIN { FIELDWIDTHS = "3 3 3" } { print $1, $2 }"#, "aaabbbccc").unwrap();
+    let output = run_awk(
+        r#"BEGIN { FIELDWIDTHS = "3 3 3" } { print $1, $2 }"#,
+        "aaabbbccc",
+    )
+    .unwrap();
     assert_eq!(output, "aaa bbb\n");
 }
 
 #[test]
 fn test_procinfo_version_length() {
-    let output = run_awk(r#"BEGIN { x = length(PROCINFO["version"]); print (x > 0) }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { x = length(PROCINFO["version"]); print (x > 0) }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "1\n");
 }
 
 #[test]
 fn test_procinfo_fs() {
     // After setting FS, PROCINFO["FS"] should indicate FS mode
-    let output = run_awk(r#"BEGIN { FS = ":" } { print (PROCINFO["FS"] != "") }"#, "a:b").unwrap();
-    assert!(output.contains("1") || output.contains("0"));  // Implementation dependent
+    let output = run_awk(
+        r#"BEGIN { FS = ":" } { print (PROCINFO["FS"] != "") }"#,
+        "a:b",
+    )
+    .unwrap();
+    assert!(output.contains("1") || output.contains("0")); // Implementation dependent
 }
 
 #[test]
@@ -2746,7 +3017,10 @@ fn test_very_long_record() {
 
 #[test]
 fn test_many_fields() {
-    let fields = (1..=50).map(|i| i.to_string()).collect::<Vec<_>>().join(" ");
+    let fields = (1..=50)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
     let output = run_awk(r#"{ print $50 }"#, &fields).unwrap();
     assert_eq!(output, "50\n");
 }
@@ -2789,7 +3063,11 @@ fn test_mktime_midnight() {
 
 #[test]
 fn test_gsub_complex_pattern() {
-    let output = run_awk(r#"BEGIN { x = "foo123bar456"; gsub("[0-9]+", "X", x); print x }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { x = "foo123bar456"; gsub("[0-9]+", "X", x); print x }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "fooXbarX\n");
 }
 
@@ -2845,7 +3123,11 @@ fn test_multiple_assignments() {
 
 #[test]
 fn test_empty_input_begin_end() {
-    let output = run_awk(r#"BEGIN { print "start" } { print "line" } END { print "end" }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { print "start" } { print "line" } END { print "end" }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "start\nend\n");
 }
 
@@ -2905,24 +3187,36 @@ fn test_string_concat_empty() {
 
 #[test]
 fn test_match_with_groups() {
-    let output = run_awk(r#"BEGIN { match("hello", "l+"); print RSTART, RLENGTH }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { match("hello", "l+"); print RSTART, RLENGTH }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "3 2\n");
 }
 
 #[test]
 fn test_close_pipe_command() {
     let output = run_awk(r#"BEGIN { print "test" | "cat"; close("cat") }"#, "").unwrap();
-    assert_eq!(output, "");  // Output goes to cat
+    assert_eq!(output, ""); // Output goes to cat
 }
 
 #[test]
 fn test_fflush_specific() {
-    let output = run_awk(r#"BEGIN { print "a"; fflush("/dev/stdout"); print "b" }"#, "").unwrap();
+    let output = run_awk(
+        r#"BEGIN { print "a"; fflush("/dev/stdout"); print "b" }"#,
+        "",
+    )
+    .unwrap();
     assert!(output.contains("a") && output.contains("b"));
 }
 
 #[test]
 fn test_function_shadowing_global() {
-    let output = run_awk(r#"function f(x) { return x*2 } BEGIN { x = 10; print f(5), x }"#, "").unwrap();
+    let output = run_awk(
+        r#"function f(x) { return x*2 } BEGIN { x = 10; print f(5), x }"#,
+        "",
+    )
+    .unwrap();
     assert_eq!(output, "10 10\n");
 }

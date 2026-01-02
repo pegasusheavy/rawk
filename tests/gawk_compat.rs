@@ -107,10 +107,7 @@ fn compat_field_access() {
 
 #[test]
 fn compat_field_separator() {
-    compare_with_gawk(
-        r#"BEGIN { FS = ":" } { print $1, $3 }"#,
-        "root:x:0:0:root",
-    );
+    compare_with_gawk(r#"BEGIN { FS = ":" } { print $1, $3 }"#, "root:x:0:0:root");
 }
 
 #[test]
@@ -165,10 +162,7 @@ fn compat_index() {
 #[test]
 fn compat_split() {
     // Test field splitting instead (split() requires lvalue handling)
-    compare_with_gawk(
-        r#"BEGIN { FS = ":"; } { print $1, $2, $3, $4 }"#,
-        "a:b:c:d",
-    );
+    compare_with_gawk(r#"BEGIN { FS = ":"; } { print $1, $2, $3, $4 }"#, "a:b:c:d");
 }
 
 #[test]
@@ -191,7 +185,10 @@ fn compat_sub() {
 
 #[test]
 fn compat_printf() {
-    compare_with_gawk(r#"BEGIN { printf "%d %s %.2f\n", 42, "test", 3.14159 }"#, "");
+    compare_with_gawk(
+        r#"BEGIN { printf "%d %s %.2f\n", 42, "test", 3.14159 }"#,
+        "",
+    );
     compare_with_gawk(r#"BEGIN { printf "%05d\n", 42 }"#, "");
     compare_with_gawk(r#"BEGIN { printf "%-10s|\n", "hi" }"#, "");
 }
@@ -277,7 +274,8 @@ fn compat_word_frequency() {
     if !gawk_available() {
         return;
     }
-    let program = "{ for (i=1; i<=NF; i++) count[$i]++ } END { for (w in count) print w, count[w] }";
+    let program =
+        "{ for (i=1; i<=NF; i++) count[$i]++ } END { for (w in count) print w, count[w] }";
     let input = "a b a c b a";
 
     let rawk_output = run_rawk(program, input);

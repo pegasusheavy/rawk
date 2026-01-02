@@ -428,7 +428,11 @@ impl Parser {
         let mut args = Vec::new();
 
         // Check for arguments (print without args prints $0)
-        if self.can_start_expression() && !self.check(&TokenKind::Greater) && !self.check(&TokenKind::Append) && !self.check(&TokenKind::Pipe) {
+        if self.can_start_expression()
+            && !self.check(&TokenKind::Greater)
+            && !self.check(&TokenKind::Append)
+            && !self.check(&TokenKind::Pipe)
+        {
             args.push(self.parse_print_arg()?);
             while self.match_token(&TokenKind::Comma) {
                 args.push(self.parse_print_arg()?);
@@ -997,7 +1001,11 @@ impl Parser {
                         location,
                     };
                 } else {
-                    return Err(Error::parser("array access requires variable name", location.line, location.column));
+                    return Err(Error::parser(
+                        "array access requires variable name",
+                        location.line,
+                        location.column,
+                    ));
                 }
             } else {
                 break;
@@ -1121,7 +1129,9 @@ impl Parser {
     }
 
     fn check(&self, kind: &TokenKind) -> bool {
-        self.peek_kind().map(|k| std::mem::discriminant(k) == std::mem::discriminant(kind)).unwrap_or(false)
+        self.peek_kind()
+            .map(|k| std::mem::discriminant(k) == std::mem::discriminant(kind))
+            .unwrap_or(false)
     }
 
     fn advance(&mut self) -> Option<&Token> {
@@ -1177,7 +1187,9 @@ impl Parser {
     }
 
     fn can_start_expression(&self) -> bool {
-        self.peek_kind().map(|k| k.can_start_expression()).unwrap_or(false)
+        self.peek_kind()
+            .map(|k| k.can_start_expression())
+            .unwrap_or(false)
     }
 }
 
@@ -1403,7 +1415,10 @@ mod tests {
     fn test_range_pattern() {
         let program = parse(r#"/start/,/end/ { print }"#).unwrap();
         assert_eq!(program.rules.len(), 1);
-        assert!(matches!(&program.rules[0].pattern, Some(Pattern::Range { .. })));
+        assert!(matches!(
+            &program.rules[0].pattern,
+            Some(Pattern::Range { .. })
+        ));
     }
 
     #[test]
@@ -1458,13 +1473,14 @@ mod tests {
 
     #[test]
     fn test_comparison_ops() {
-        let program = parse(r#"{ x = a < b && b <= c && c > d && d >= e && e == f && f != g }"#).unwrap();
+        let program =
+            parse(r#"{ x = a < b && b <= c && c > d && d >= e && e == f && f != g }"#).unwrap();
         assert_eq!(program.rules.len(), 1);
     }
 
     #[test]
     fn test_exponentiation() {
-        let program = parse(r#"{ x = 2^3^4 }"#).unwrap();  // right associative
+        let program = parse(r#"{ x = 2^3^4 }"#).unwrap(); // right associative
         assert_eq!(program.rules.len(), 1);
     }
 }

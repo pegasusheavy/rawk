@@ -34,9 +34,10 @@ use std::fmt;
 /// assert!(Value::from_string("hello".to_string()).is_truthy());
 /// assert!(!Value::from_string("".to_string()).is_truthy());
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum Value {
     /// Uninitialized value - coerces to "" or 0 depending on context
+    #[default]
     Uninitialized,
     /// Numeric value
     Number(f64),
@@ -45,12 +46,6 @@ pub enum Value {
     /// Numeric string - a string that looks like a number
     /// (used for comparison semantics)
     NumericString(String, f64),
-}
-
-impl Default for Value {
-    fn default() -> Self {
-        Value::Uninitialized
-    }
 }
 
 impl Value {
@@ -138,7 +133,10 @@ impl Value {
     /// Check if this value should compare as a number
     #[inline]
     pub fn compares_as_number(&self) -> bool {
-        matches!(self, Value::Number(_) | Value::NumericString(_, _) | Value::Uninitialized)
+        matches!(
+            self,
+            Value::Number(_) | Value::NumericString(_, _) | Value::Uninitialized
+        )
     }
 }
 
@@ -232,10 +230,12 @@ pub fn parse_leading_number(s: &str) -> f64 {
 
     // Fast path for common integer case
     let num_str = &s[start..i];
-    if !num_str.contains('.') && !num_str.contains('e') && !num_str.contains('E') {
-        if let Ok(n) = num_str.parse::<i64>() {
-            return n as f64;
-        }
+    if !num_str.contains('.')
+        && !num_str.contains('e')
+        && !num_str.contains('E')
+        && let Ok(n) = num_str.parse::<i64>()
+    {
+        return n as f64;
     }
 
     num_str.parse().unwrap_or(0.0)
@@ -306,8 +306,8 @@ pub fn format_number(n: f64, format: &str) -> String {
         // Trim trailing zeros after decimal point
         if s.contains('.') {
             let trimmed = s.trim_end_matches('0');
-            if trimmed.ends_with('.') {
-                return trimmed[..trimmed.len()-1].to_string();
+            if let Some(stripped) = trimmed.strip_suffix('.') {
+                return stripped.to_string();
             }
             return trimmed.to_string();
         }
@@ -389,7 +389,7 @@ mod tests {
     #[test]
     fn test_leading_number() {
         assert_eq!(parse_leading_number("42abc"), 42.0);
-        assert_eq!(parse_leading_number("  3.14  "), 3.14);
+        assert_eq!(parse_leading_number("  2.75  "), 2.75);
         assert_eq!(parse_leading_number("abc"), 0.0);
         assert_eq!(parse_leading_number("-5.5"), -5.5);
         assert_eq!(parse_leading_number("1e10"), 1e10);
@@ -439,20 +439,20 @@ mod tests {
 
     #[test]
     fn test_format_number_float() {
-        assert_eq!(format_number(3.14, "%.6g"), "3.14");
+        assert_eq!(format_number(2.75, "%.6g"), "2.75");
     }
 
     #[test]
     fn test_from_number() {
-        let v = Value::from_number(3.14);
-        assert_eq!(v.to_number(), 3.14);
+        let v = Value::from_number(2.75);
+        assert_eq!(v.to_number(), 2.75);
     }
 
     #[test]
     fn test_is_truthy_numeric_string() {
         let v = Value::NumericString("42".to_string(), 42.0);
         assert!(v.is_truthy());
-        
+
         let empty = Value::NumericString("".to_string(), 0.0);
         assert!(!empty.is_truthy());
     }
@@ -476,7 +476,7 @@ mod tests {
     #[test]
     fn test_parse_leading_with_sign() {
         assert_eq!(parse_leading_number("+42"), 42.0);
-        assert_eq!(parse_leading_number("  +3.14"), 3.14);
+        assert_eq!(parse_leading_number("  +2.75"), 2.75);
     }
 
     #[test]

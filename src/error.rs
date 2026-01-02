@@ -140,6 +140,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::invalid_regex)]
     fn test_regex_error() {
         let re_err = regex::Regex::new("[invalid").unwrap_err();
         let err: Error = re_err.into();

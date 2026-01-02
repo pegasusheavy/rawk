@@ -2,8 +2,8 @@
 //!
 //! These tests run the rawk binary and verify command-line behavior.
 
-use std::process::Command;
 use std::io::Write;
+use std::process::Command;
 use tempfile::NamedTempFile;
 
 /// Run rawk with the given arguments and input, returning stdout
@@ -12,7 +12,7 @@ fn run_rawk(args: &[&str], input: Option<&str>) -> Result<String, String> {
     cmd.args(["run", "--quiet", "--"]);
     cmd.args(args);
 
-    if let Some(input_str) = input {
+    if input.is_some() {
         cmd.stdin(std::process::Stdio::piped());
     }
     cmd.stdout(std::process::Stdio::piped());
@@ -20,10 +20,12 @@ fn run_rawk(args: &[&str], input: Option<&str>) -> Result<String, String> {
 
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
 
-    if let Some(input_str) = input {
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(input_str.as_bytes()).map_err(|e| e.to_string())?;
-        }
+    if let Some(input_str) = input
+        && let Some(mut stdin) = child.stdin.take()
+    {
+        stdin
+            .write_all(input_str.as_bytes())
+            .map_err(|e| e.to_string())?;
     }
 
     let output = child.wait_with_output().map_err(|e| e.to_string())?;
@@ -158,7 +160,7 @@ fn test_cli_error_invalid_v_arg() {
 }
 
 #[test]
-fn test_cli_error_missing_F_arg() {
+fn test_cli_error_missing_field_sep_arg() {
     let result = run_rawk(&["-F"], None);
     assert!(result.is_err());
 }

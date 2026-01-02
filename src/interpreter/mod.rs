@@ -3,9 +3,9 @@ mod expr;
 pub mod stmt;
 
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Write};
 use std::fs::File;
-use std::process::{Child, ChildStdout, ChildStdin};
+use std::io::{BufRead, BufReader, Write};
+use std::process::{Child, ChildStdin, ChildStdout};
 
 use crate::ast::*;
 use crate::error::{Error, Result};
@@ -225,7 +225,8 @@ impl<'a> Interpreter<'a> {
 
     /// Set a variable before execution
     pub fn set_variable(&mut self, name: &str, value: &str) {
-        self.variables.insert(name.to_string(), Value::from_string(value.to_string()));
+        self.variables
+            .insert(name.to_string(), Value::from_string(value.to_string()));
     }
 
     /// Set the current filename (FILENAME)
@@ -284,10 +285,10 @@ impl<'a> Interpreter<'a> {
 
         // Execute END rules
         for rule in &self.program.rules {
-            if matches!(&rule.pattern, Some(Pattern::End)) {
-                if let Some(action) = &rule.action {
-                    self.execute_block(action, output)?;
-                }
+            if matches!(&rule.pattern, Some(Pattern::End))
+                && let Some(action) = &rule.action
+            {
+                self.execute_block(action, output)?;
             }
         }
 
@@ -338,7 +339,11 @@ impl<'a> Interpreter<'a> {
 
     /// Process input in paragraph mode (RS = "")
     /// Blank lines separate records; multiple blank lines count as one separator
-    fn process_input_paragraph_mode<R: BufRead, W: Write>(&mut self, mut input: R, output: &mut W) -> Result<()> {
+    fn process_input_paragraph_mode<R: BufRead, W: Write>(
+        &mut self,
+        mut input: R,
+        output: &mut W,
+    ) -> Result<()> {
         let mut line = String::new();
         let mut record = String::new();
         let mut in_record = false;
@@ -412,9 +417,13 @@ impl<'a> Interpreter<'a> {
     fn process_current_record<W: Write>(&mut self, output: &mut W) -> Result<()> {
         for (idx, rule) in self.program.rules.iter().enumerate() {
             // Skip special patterns that are handled separately
-            if matches!(&rule.pattern,
-                Some(Pattern::Begin) | Some(Pattern::End) |
-                Some(Pattern::BeginFile) | Some(Pattern::EndFile)) {
+            if matches!(
+                &rule.pattern,
+                Some(Pattern::Begin)
+                    | Some(Pattern::End)
+                    | Some(Pattern::BeginFile)
+                    | Some(Pattern::EndFile)
+            ) {
                 continue;
             }
 
@@ -473,7 +482,8 @@ impl<'a> Interpreter<'a> {
         if self.fs == " " {
             // Special case: split on runs of whitespace, trimming leading/trailing
             // Use byte-based iteration for ASCII optimization
-            self.fields.extend(self.record.split_whitespace().map(String::from));
+            self.fields
+                .extend(self.record.split_whitespace().map(String::from));
         } else if self.fs.len() == 1 {
             // Single character separator - most common case, optimize for it
             let sep = self.fs.as_bytes()[0];
@@ -527,7 +537,8 @@ impl<'a> Interpreter<'a> {
 
     /// Split fields using FIELDWIDTHS (fixed-width fields)
     fn split_fields_widths(&mut self) {
-        let widths: Vec<usize> = self.fieldwidths
+        let widths: Vec<usize> = self
+            .fieldwidths
             .split_whitespace()
             .filter_map(|s| s.parse().ok())
             .collect();
@@ -591,8 +602,10 @@ impl<'a> Interpreter<'a> {
     fn pattern_matches(&mut self, pattern: &Option<Pattern>, rule_idx: usize) -> Result<bool> {
         match pattern {
             None => Ok(true), // No pattern means always match
-            Some(Pattern::Begin) | Some(Pattern::End) |
-            Some(Pattern::BeginFile) | Some(Pattern::EndFile) => Ok(false),
+            Some(Pattern::Begin)
+            | Some(Pattern::End)
+            | Some(Pattern::BeginFile)
+            | Some(Pattern::EndFile) => Ok(false),
             Some(Pattern::Expr(expr)) => {
                 let val = self.eval_expr(expr)?;
                 Ok(val.is_truthy())
@@ -619,14 +632,12 @@ impl<'a> Interpreter<'a> {
                     Ok(true)
                 }
             }
-            Some(Pattern::And(left, right)) => {
-                Ok(self.pattern_matches(&Some(left.as_ref().clone()), rule_idx)?
-                    && self.pattern_matches(&Some(right.as_ref().clone()), rule_idx)?)
-            }
-            Some(Pattern::Or(left, right)) => {
-                Ok(self.pattern_matches(&Some(left.as_ref().clone()), rule_idx)?
-                    || self.pattern_matches(&Some(right.as_ref().clone()), rule_idx)?)
-            }
+            Some(Pattern::And(left, right)) => Ok(self
+                .pattern_matches(&Some(left.as_ref().clone()), rule_idx)?
+                && self.pattern_matches(&Some(right.as_ref().clone()), rule_idx)?),
+            Some(Pattern::Or(left, right)) => Ok(self
+                .pattern_matches(&Some(left.as_ref().clone()), rule_idx)?
+                || self.pattern_matches(&Some(right.as_ref().clone()), rule_idx)?),
             Some(Pattern::Not(inner)) => {
                 Ok(!self.pattern_matches(&Some(inner.as_ref().clone()), rule_idx)?)
             }
@@ -661,21 +672,23 @@ impl<'a> Interpreter<'a> {
             // gawk extensions
             "FPAT" => Value::from_string(self.fpat.clone()),
             "FIELDWIDTHS" => Value::from_string(self.fieldwidths.clone()),
-            _ => self.variables.get(name).cloned().unwrap_or(Value::Uninitialized),
+            _ => self
+                .variables
+                .get(name)
+                .cloned()
+                .unwrap_or(Value::Uninitialized),
         }
     }
 
     /// Get an element from ARGV, ENVIRON, or PROCINFO arrays
     pub(crate) fn get_special_array(&self, array: &str, key: &str) -> Option<Value> {
         match array {
-            "ARGV" => {
-                key.parse::<usize>().ok()
-                    .and_then(|i| self.argv.get(i))
-                    .map(|s| Value::from_string(s.clone()))
-            }
-            "ENVIRON" => {
-                self.environ.get(key).map(|s| Value::from_string(s.clone()))
-            }
+            "ARGV" => key
+                .parse::<usize>()
+                .ok()
+                .and_then(|i| self.argv.get(i))
+                .map(|s| Value::from_string(s.clone())),
+            "ENVIRON" => self.environ.get(key).map(|s| Value::from_string(s.clone())),
             "PROCINFO" => {
                 // gawk PROCINFO array - system information
                 match key {
@@ -693,8 +706,8 @@ impl<'a> Interpreter<'a> {
                     "identifiers" => Some(Value::Number(0.0)), // Not implemented
                     "pid" => Some(Value::Number(std::process::id() as f64)),
                     "ppid" => Some(Value::Number(0.0)), // Not easily available in Rust
-                    "uid" => Some(Value::Number(0.0)), // Platform specific
-                    "gid" => Some(Value::Number(0.0)), // Platform specific
+                    "uid" => Some(Value::Number(0.0)),  // Platform specific
+                    "gid" => Some(Value::Number(0.0)),  // Platform specific
                     "euid" => Some(Value::Number(0.0)), // Platform specific
                     "egid" => Some(Value::Number(0.0)), // Platform specific
                     "pgrpid" => Some(Value::Number(0.0)), // Platform specific
@@ -751,7 +764,10 @@ impl<'a> Interpreter<'a> {
 
     /// Resolve array name through aliases (for pass-by-reference in functions)
     fn resolve_array_name<'b>(&'b self, array: &'b str) -> &'b str {
-        self.array_aliases.get(array).map(|s| s.as_str()).unwrap_or(array)
+        self.array_aliases
+            .get(array)
+            .map(|s| s.as_str())
+            .unwrap_or(array)
     }
 
     pub(crate) fn get_array_element(&self, array: &str, key: &str) -> Value {
@@ -782,18 +798,17 @@ impl<'a> Interpreter<'a> {
 
         // Check special arrays
         match array {
-            "ARGV" => {
-                key.parse::<usize>().ok()
-                    .map(|i| i < self.argv.len())
-                    .unwrap_or(false)
-            }
+            "ARGV" => key
+                .parse::<usize>()
+                .ok()
+                .map(|i| i < self.argv.len())
+                .unwrap_or(false),
             "ENVIRON" => self.environ.contains_key(key),
-            _ => {
-                self.arrays
-                    .get(array)
-                    .map(|arr| arr.contains_key(key))
-                    .unwrap_or(false)
-            }
+            _ => self
+                .arrays
+                .get(array)
+                .map(|arr| arr.contains_key(key))
+                .unwrap_or(false),
         }
     }
 
@@ -894,7 +909,10 @@ mod tests {
 
     #[test]
     fn test_for_in_loop() {
-        let output = run_awk("BEGIN { a[1]=1; a[2]=2; for (k in a) count++; print count }", "");
+        let output = run_awk(
+            "BEGIN { a[1]=1; a[2]=2; for (k in a) count++; print count }",
+            "",
+        );
         assert_eq!(output, "2\n");
     }
 
@@ -906,13 +924,19 @@ mod tests {
 
     #[test]
     fn test_break() {
-        let output = run_awk("BEGIN { for (i=1; i<=10; i++) { if (i==3) break; print i } }", "");
+        let output = run_awk(
+            "BEGIN { for (i=1; i<=10; i++) { if (i==3) break; print i } }",
+            "",
+        );
         assert_eq!(output, "1\n2\n");
     }
 
     #[test]
     fn test_continue() {
-        let output = run_awk("BEGIN { for (i=1; i<=3; i++) { if (i==2) continue; print i } }", "");
+        let output = run_awk(
+            "BEGIN { for (i=1; i<=3; i++) { if (i==2) continue; print i } }",
+            "",
+        );
         assert_eq!(output, "1\n3\n");
     }
 
@@ -949,7 +973,10 @@ mod tests {
 
     #[test]
     fn test_delete() {
-        let output = run_awk("BEGIN { a[1]=1; a[2]=2; delete a[1]; for(k in a) print k }", "");
+        let output = run_awk(
+            "BEGIN { a[1]=1; a[2]=2; delete a[1]; for(k in a) print k }",
+            "",
+        );
         assert_eq!(output, "2\n");
     }
 
@@ -985,13 +1012,19 @@ mod tests {
 
     #[test]
     fn test_user_function() {
-        let output = run_awk("function double(x) { return x*2 } BEGIN { print double(5) }", "");
+        let output = run_awk(
+            "function double(x) { return x*2 } BEGIN { print double(5) }",
+            "",
+        );
         assert_eq!(output, "10\n");
     }
 
     #[test]
     fn test_recursion() {
-        let output = run_awk("function fact(n) { return n<=1 ? 1 : n*fact(n-1) } BEGIN { print fact(5) }", "");
+        let output = run_awk(
+            "function fact(n) { return n<=1 ? 1 : n*fact(n-1) } BEGIN { print fact(5) }",
+            "",
+        );
         assert_eq!(output, "120\n");
     }
 
@@ -1003,7 +1036,10 @@ mod tests {
 
     #[test]
     fn test_range_pattern() {
-        let output = run_awk("/start/,/end/ { print }", "before\nstart\nmiddle\nend\nafter");
+        let output = run_awk(
+            "/start/,/end/ { print }",
+            "before\nstart\nmiddle\nend\nafter",
+        );
         assert_eq!(output, "start\nmiddle\nend\n");
     }
 
@@ -1045,7 +1081,10 @@ mod tests {
 
     #[test]
     fn test_builtin_split() {
-        let output = run_awk("BEGIN { n = split(\"a:b:c\", arr, \":\"); print n, arr[1], arr[2] }", "");
+        let output = run_awk(
+            "BEGIN { n = split(\"a:b:c\", arr, \":\"); print n, arr[1], arr[2] }",
+            "",
+        );
         assert_eq!(output, "3 a b\n");
     }
 
@@ -1057,7 +1096,10 @@ mod tests {
 
     #[test]
     fn test_builtin_gsub() {
-        let output = run_awk("BEGIN { x = \"hello\"; gsub(\"l\", \"L\", x); print x }", "");
+        let output = run_awk(
+            "BEGIN { x = \"hello\"; gsub(\"l\", \"L\", x); print x }",
+            "",
+        );
         assert_eq!(output, "heLLo\n");
     }
 
@@ -1142,7 +1184,10 @@ mod tests {
 
     #[test]
     fn test_fieldwidths() {
-        let output = run_awk("BEGIN { FIELDWIDTHS = \"2 3 2\" } { print $1, $2 }", "abcdefg");
+        let output = run_awk(
+            "BEGIN { FIELDWIDTHS = \"2 3 2\" } { print $1, $2 }",
+            "abcdefg",
+        );
         assert_eq!(output, "ab cde\n");
     }
 
