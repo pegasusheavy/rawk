@@ -594,4 +594,233 @@ mod tests {
         assert_eq!(tokens[2].location.line, 2);
         assert_eq!(tokens[4].location.line, 3);
     }
+
+    #[test]
+    fn test_comparison_operators() {
+        let mut lexer = Lexer::new("< <= > >= == !=");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Less));
+        assert!(matches!(tokens[1].kind, TokenKind::LessEqual));
+        assert!(matches!(tokens[2].kind, TokenKind::Greater));
+        assert!(matches!(tokens[3].kind, TokenKind::GreaterEqual));
+        assert!(matches!(tokens[4].kind, TokenKind::Equal));
+        assert!(matches!(tokens[5].kind, TokenKind::NotEqual));
+    }
+
+    #[test]
+    fn test_logical_operators() {
+        let mut lexer = Lexer::new("&& || !");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::And));
+        assert!(matches!(tokens[1].kind, TokenKind::Or));
+        assert!(matches!(tokens[2].kind, TokenKind::Not));
+    }
+
+    #[test]
+    fn test_regex_match_operators() {
+        let mut lexer = Lexer::new("x ~ y x !~ y");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[1].kind, TokenKind::Match));
+        assert!(matches!(tokens[4].kind, TokenKind::NotMatch));
+    }
+
+    #[test]
+    fn test_assignment_operators() {
+        // Put value-producing tokens before /= to avoid regex interpretation
+        let mut lexer = Lexer::new("x = 1 x += 1 x -= 1 x *= 1 x /= 1 x %= 1 x ^= 1");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[1].kind, TokenKind::Assign));
+        assert!(matches!(tokens[4].kind, TokenKind::PlusAssign));
+        assert!(matches!(tokens[7].kind, TokenKind::MinusAssign));
+        assert!(matches!(tokens[10].kind, TokenKind::StarAssign));
+        assert!(matches!(tokens[13].kind, TokenKind::SlashAssign));
+        assert!(matches!(tokens[16].kind, TokenKind::PercentAssign));
+        assert!(matches!(tokens[19].kind, TokenKind::CaretAssign));
+    }
+
+    #[test]
+    fn test_increment_decrement() {
+        let mut lexer = Lexer::new("++ --");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Increment));
+        assert!(matches!(tokens[1].kind, TokenKind::Decrement));
+    }
+
+    #[test]
+    fn test_delimiters() {
+        let mut lexer = Lexer::new("( ) { } [ ] ; ,");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::LeftParen));
+        assert!(matches!(tokens[1].kind, TokenKind::RightParen));
+        assert!(matches!(tokens[2].kind, TokenKind::LeftBrace));
+        assert!(matches!(tokens[3].kind, TokenKind::RightBrace));
+        assert!(matches!(tokens[4].kind, TokenKind::LeftBracket));
+        assert!(matches!(tokens[5].kind, TokenKind::RightBracket));
+        assert!(matches!(tokens[6].kind, TokenKind::Semicolon));
+        assert!(matches!(tokens[7].kind, TokenKind::Comma));
+    }
+
+    #[test]
+    fn test_special_operators() {
+        let mut lexer = Lexer::new("$ ? : | >>");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Dollar));
+        assert!(matches!(tokens[1].kind, TokenKind::Question));
+        assert!(matches!(tokens[2].kind, TokenKind::Colon));
+        assert!(matches!(tokens[3].kind, TokenKind::Pipe));
+        assert!(matches!(tokens[4].kind, TokenKind::Append));
+    }
+
+    #[test]
+    fn test_exponent() {
+        let mut lexer = Lexer::new("x ^ 2");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[1].kind, TokenKind::Caret));
+    }
+
+    #[test]
+    fn test_comments() {
+        let mut lexer = Lexer::new("x # this is a comment\ny");
+        let tokens = lexer.tokenize().unwrap();
+        // Comment should be skipped
+        assert!(matches!(&tokens[0].kind, TokenKind::Identifier(s) if s == "x"));
+        assert!(matches!(tokens[1].kind, TokenKind::Newline));
+        assert!(matches!(&tokens[2].kind, TokenKind::Identifier(s) if s == "y"));
+    }
+
+    #[test]
+    fn test_line_continuation() {
+        let mut lexer = Lexer::new("x \\\ny");
+        let tokens = lexer.tokenize().unwrap();
+        // Backslash-newline should be skipped
+        assert!(matches!(&tokens[0].kind, TokenKind::Identifier(s) if s == "x"));
+        assert!(matches!(&tokens[1].kind, TokenKind::Identifier(s) if s == "y"));
+    }
+
+    #[test]
+    fn test_string_escapes() {
+        let mut lexer = Lexer::new(r#""\t\r\n\b\f\a\v\\\"\/""#);
+        let tokens = lexer.tokenize().unwrap();
+        if let TokenKind::String(s) = &tokens[0].kind {
+            assert!(s.contains('\t'));
+            assert!(s.contains('\r'));
+            assert!(s.contains('\n'));
+            assert!(s.contains('\\'));
+            assert!(s.contains('"'));
+            assert!(s.contains('/'));
+        } else {
+            panic!("Expected string token");
+        }
+    }
+
+    #[test]
+    fn test_hex_escape() {
+        let mut lexer = Lexer::new(r#""\x41\x42""#);
+        let tokens = lexer.tokenize().unwrap();
+        if let TokenKind::String(s) = &tokens[0].kind {
+            assert_eq!(s, "AB");
+        } else {
+            panic!("Expected string token");
+        }
+    }
+
+    #[test]
+    fn test_octal_escape() {
+        let mut lexer = Lexer::new(r#""\101\102""#);
+        let tokens = lexer.tokenize().unwrap();
+        if let TokenKind::String(s) = &tokens[0].kind {
+            assert_eq!(s, "AB");
+        } else {
+            panic!("Expected string token");
+        }
+    }
+
+    #[test]
+    fn test_regex_with_escapes() {
+        let mut lexer = Lexer::new(r#"/a\/b/"#);
+        let tokens = lexer.tokenize().unwrap();
+        if let TokenKind::Regex(s) = &tokens[0].kind {
+            assert!(s.contains("\\/"));
+        } else {
+            panic!("Expected regex token");
+        }
+    }
+
+    #[test]
+    fn test_more_keywords() {
+        let mut lexer = Lexer::new("do break continue function return delete exit next nextfile getline printf in BEGINFILE ENDFILE");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Do));
+        assert!(matches!(tokens[1].kind, TokenKind::Break));
+        assert!(matches!(tokens[2].kind, TokenKind::Continue));
+        assert!(matches!(tokens[3].kind, TokenKind::Function));
+        assert!(matches!(tokens[4].kind, TokenKind::Return));
+        assert!(matches!(tokens[5].kind, TokenKind::Delete));
+        assert!(matches!(tokens[6].kind, TokenKind::Exit));
+        assert!(matches!(tokens[7].kind, TokenKind::Next));
+        assert!(matches!(tokens[8].kind, TokenKind::Nextfile));
+        assert!(matches!(tokens[9].kind, TokenKind::Getline));
+        assert!(matches!(tokens[10].kind, TokenKind::Printf));
+        assert!(matches!(tokens[11].kind, TokenKind::In));
+        assert!(matches!(tokens[12].kind, TokenKind::BeginFile));
+        assert!(matches!(tokens[13].kind, TokenKind::EndFile));
+    }
+
+    #[test]
+    fn test_number_with_exponent() {
+        let mut lexer = Lexer::new("1e+5 1E-5");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Number(n) if n == 1e5));
+        assert!(matches!(tokens[1].kind, TokenKind::Number(n) if n == 1e-5));
+    }
+
+    #[test]
+    fn test_decimal_starting_with_dot() {
+        let mut lexer = Lexer::new(".5 .123");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Number(n) if (n - 0.5).abs() < 0.001));
+        assert!(matches!(tokens[1].kind, TokenKind::Number(n) if (n - 0.123).abs() < 0.001));
+    }
+
+    #[test]
+    fn test_unexpected_character_error() {
+        let mut lexer = Lexer::new("@");
+        let result = lexer.tokenize();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unterminated_string_error() {
+        let mut lexer = Lexer::new("\"unterminated");
+        let result = lexer.tokenize();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unterminated_regex_error() {
+        let mut lexer = Lexer::new("/unterminated");
+        let result = lexer.tokenize();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_with_newline_error() {
+        let mut lexer = Lexer::new("\"hello\nworld\"");
+        let result = lexer.tokenize();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_single_ampersand_error() {
+        let mut lexer = Lexer::new("& ");
+        let result = lexer.tokenize();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eof_token() {
+        let mut lexer = Lexer::new("");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Eof));
+    }
 }

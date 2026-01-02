@@ -3,6 +3,37 @@ use std::cmp::Ordering;
 use std::fmt;
 
 /// AWK value type with dynamic typing and automatic coercion
+///
+/// AWK has a unique type system where values can be strings, numbers, or
+/// "numeric strings" (strings that look like numbers). This enum captures
+/// all three cases.
+///
+/// # Examples
+///
+/// ```
+/// use rawk::Value;
+///
+/// // Numbers
+/// let num = Value::Number(42.0);
+/// assert_eq!(num.to_number(), 42.0);
+/// assert_eq!(num.to_string_val(), "42");
+///
+/// // Strings
+/// let s = Value::from_string("hello".to_string());
+/// assert_eq!(s.to_string_val(), "hello");
+/// assert_eq!(s.to_number(), 0.0);  // Non-numeric string coerces to 0
+///
+/// // Numeric strings
+/// let ns = Value::from_string("123".to_string());
+/// assert_eq!(ns.to_number(), 123.0);
+/// assert_eq!(ns.to_string_val(), "123");
+///
+/// // Truthiness
+/// assert!(Value::Number(1.0).is_truthy());
+/// assert!(!Value::Number(0.0).is_truthy());
+/// assert!(Value::from_string("hello".to_string()).is_truthy());
+/// assert!(!Value::from_string("".to_string()).is_truthy());
+/// ```
 #[derive(Debug, Clone)]
 pub enum Value {
     /// Uninitialized value - coerces to "" or 0 depending on context

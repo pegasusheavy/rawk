@@ -82,3 +82,69 @@ impl Error {
 
 /// Result type alias for rawk operations
 pub type Result<T> = std::result::Result<T, Error>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_source_location() {
+        let loc = SourceLocation::new(10, 5);
+        assert_eq!(loc.line, 10);
+        assert_eq!(loc.column, 5);
+        assert_eq!(format!("{}", loc), "line 10, column 5");
+    }
+
+    #[test]
+    fn test_lexer_error() {
+        let err = Error::lexer("unexpected character", 1, 5);
+        assert!(matches!(err, Error::Lexer { .. }));
+        let msg = format!("{}", err);
+        assert!(msg.contains("lexer error"));
+        assert!(msg.contains("unexpected character"));
+    }
+
+    #[test]
+    fn test_parser_error() {
+        let err = Error::parser("expected expression", 2, 10);
+        assert!(matches!(err, Error::Parser { .. }));
+        let msg = format!("{}", err);
+        assert!(msg.contains("parser error"));
+    }
+
+    #[test]
+    fn test_runtime_error() {
+        let err = Error::runtime("division by zero");
+        assert!(matches!(err, Error::Runtime { .. }));
+        let msg = format!("{}", err);
+        assert!(msg.contains("runtime error"));
+        assert!(msg.contains("division by zero"));
+    }
+
+    #[test]
+    fn test_runtime_error_with_location() {
+        let err = Error::runtime_at("undefined variable", 5, 3);
+        assert!(matches!(err, Error::RuntimeWithLocation { .. }));
+        let msg = format!("{}", err);
+        assert!(msg.contains("runtime error"));
+        assert!(msg.contains("line 5"));
+    }
+
+    #[test]
+    fn test_io_error() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let err: Error = io_err.into();
+        assert!(matches!(err, Error::Io(_)));
+        let msg = format!("{}", err);
+        assert!(msg.contains("I/O error"));
+    }
+
+    #[test]
+    fn test_regex_error() {
+        let re_err = regex::Regex::new("[invalid").unwrap_err();
+        let err: Error = re_err.into();
+        assert!(matches!(err, Error::Regex(_)));
+        let msg = format!("{}", err);
+        assert!(msg.contains("regex error"));
+    }
+}

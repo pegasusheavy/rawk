@@ -75,7 +75,7 @@ pub struct Interpreter<'a> {
     pub(crate) fpat: String,
     /// Fixed field widths (FIELDWIDTHS) - gawk extension
     pub(crate) fieldwidths: String,
-    
+
     /// Mode flags
     pub(crate) posix_mode: bool,
     pub(crate) traditional_mode: bool,
@@ -510,7 +510,7 @@ impl<'a> Interpreter<'a> {
     fn split_fields_fpat(&mut self) {
         let fpat = self.fpat.clone();
         let record = self.record.clone();
-        
+
         if let Some(regex) = self.regex_cache.get(&fpat) {
             for mat in regex.find_iter(&record) {
                 self.fields.push(mat.as_str().to_string());
@@ -521,7 +521,7 @@ impl<'a> Interpreter<'a> {
             }
             self.regex_cache.insert(fpat, regex);
         }
-        
+
         self.nf = self.fields.len();
     }
 
@@ -531,10 +531,10 @@ impl<'a> Interpreter<'a> {
             .split_whitespace()
             .filter_map(|s| s.parse().ok())
             .collect();
-        
+
         let mut pos = 0;
         let chars: Vec<char> = self.record.chars().collect();
-        
+
         for width in widths {
             if pos >= chars.len() {
                 break;
@@ -544,7 +544,7 @@ impl<'a> Interpreter<'a> {
             self.fields.push(field);
             pos = end;
         }
-        
+
         self.nf = self.fields.len();
     }
 
@@ -884,5 +884,272 @@ mod tests {
     fn test_pattern_match() {
         let output = run_awk("/two/ { print $0 }", "one\ntwo\nthree");
         assert_eq!(output, "two\n");
+    }
+
+    #[test]
+    fn test_for_loop() {
+        let output = run_awk("BEGIN { for (i = 1; i <= 3; i++) print i }", "");
+        assert_eq!(output, "1\n2\n3\n");
+    }
+
+    #[test]
+    fn test_for_in_loop() {
+        let output = run_awk("BEGIN { a[1]=1; a[2]=2; for (k in a) count++; print count }", "");
+        assert_eq!(output, "2\n");
+    }
+
+    #[test]
+    fn test_do_while() {
+        let output = run_awk("BEGIN { i = 0; do { i++ } while (i < 3); print i }", "");
+        assert_eq!(output, "3\n");
+    }
+
+    #[test]
+    fn test_break() {
+        let output = run_awk("BEGIN { for (i=1; i<=10; i++) { if (i==3) break; print i } }", "");
+        assert_eq!(output, "1\n2\n");
+    }
+
+    #[test]
+    fn test_continue() {
+        let output = run_awk("BEGIN { for (i=1; i<=3; i++) { if (i==2) continue; print i } }", "");
+        assert_eq!(output, "1\n3\n");
+    }
+
+    #[test]
+    fn test_next() {
+        let output = run_awk("/skip/ { next } { print }", "one\nskip\ntwo");
+        assert_eq!(output, "one\ntwo\n");
+    }
+
+    #[test]
+    fn test_exit() {
+        // exit is called before print on NR == 2
+        let output = run_awk("NR == 2 { exit } { print }", "one\ntwo\nthree");
+        assert_eq!(output, "one\n");
+    }
+
+    #[test]
+    fn test_exit_in_end() {
+        let output = run_awk("{ print } END { print \"done\" }", "one\ntwo");
+        assert!(output.contains("done"));
+    }
+
+    #[test]
+    fn test_array_access() {
+        let output = run_awk("BEGIN { a[\"x\"] = 1; print a[\"x\"] }", "");
+        assert_eq!(output, "1\n");
+    }
+
+    #[test]
+    fn test_array_in() {
+        let output = run_awk("BEGIN { a[1]=1; print (1 in a), (2 in a) }", "");
+        assert_eq!(output, "1 0\n");
+    }
+
+    #[test]
+    fn test_delete() {
+        let output = run_awk("BEGIN { a[1]=1; a[2]=2; delete a[1]; for(k in a) print k }", "");
+        assert_eq!(output, "2\n");
+    }
+
+    #[test]
+    fn test_special_variables() {
+        let output = run_awk("{ print NR, NF, $0 }", "a b c");
+        assert_eq!(output, "1 3 a b c\n");
+    }
+
+    #[test]
+    fn test_fs_change() {
+        let output = run_awk("BEGIN { FS = \":\" } { print $1 }", "a:b:c");
+        assert_eq!(output, "a\n");
+    }
+
+    #[test]
+    fn test_ofs() {
+        let output = run_awk("BEGIN { OFS = \"-\" } { print $1, $2 }", "a b c");
+        assert_eq!(output, "a-b\n");
+    }
+
+    #[test]
+    fn test_nf_access() {
+        let output = run_awk("{ print $NF }", "a b c");
+        assert_eq!(output, "c\n");
+    }
+
+    #[test]
+    fn test_field_modify() {
+        let output = run_awk("{ $2 = \"X\"; print $0 }", "a b c");
+        assert_eq!(output, "a X c\n");
+    }
+
+    #[test]
+    fn test_user_function() {
+        let output = run_awk("function double(x) { return x*2 } BEGIN { print double(5) }", "");
+        assert_eq!(output, "10\n");
+    }
+
+    #[test]
+    fn test_recursion() {
+        let output = run_awk("function fact(n) { return n<=1 ? 1 : n*fact(n-1) } BEGIN { print fact(5) }", "");
+        assert_eq!(output, "120\n");
+    }
+
+    #[test]
+    fn test_printf() {
+        let output = run_awk("BEGIN { printf \"%d %s\\n\", 42, \"hello\" }", "");
+        assert_eq!(output, "42 hello\n");
+    }
+
+    #[test]
+    fn test_range_pattern() {
+        let output = run_awk("/start/,/end/ { print }", "before\nstart\nmiddle\nend\nafter");
+        assert_eq!(output, "start\nmiddle\nend\n");
+    }
+
+    #[test]
+    fn test_compound_pattern_and() {
+        let output = run_awk("NR > 1 && NR < 4 { print }", "one\ntwo\nthree\nfour");
+        assert_eq!(output, "two\nthree\n");
+    }
+
+    #[test]
+    fn test_logical_or_in_expr() {
+        let output = run_awk("{ if (/a/ || /c/) print }", "a\nb\nc");
+        assert_eq!(output, "a\nc\n");
+    }
+
+    #[test]
+    fn test_negated_pattern() {
+        let output = run_awk("!/skip/ { print }", "keep\nskip\nkeep");
+        assert_eq!(output, "keep\nkeep\n");
+    }
+
+    #[test]
+    fn test_builtin_length() {
+        let output = run_awk("BEGIN { print length(\"hello\") }", "");
+        assert_eq!(output, "5\n");
+    }
+
+    #[test]
+    fn test_builtin_substr() {
+        let output = run_awk("BEGIN { print substr(\"hello\", 2, 3) }", "");
+        assert_eq!(output, "ell\n");
+    }
+
+    #[test]
+    fn test_builtin_index() {
+        let output = run_awk("BEGIN { print index(\"hello\", \"ll\") }", "");
+        assert_eq!(output, "3\n");
+    }
+
+    #[test]
+    fn test_builtin_split() {
+        let output = run_awk("BEGIN { n = split(\"a:b:c\", arr, \":\"); print n, arr[1], arr[2] }", "");
+        assert_eq!(output, "3 a b\n");
+    }
+
+    #[test]
+    fn test_builtin_sub() {
+        let output = run_awk("BEGIN { x = \"hello\"; sub(\"l\", \"L\", x); print x }", "");
+        assert_eq!(output, "heLlo\n");
+    }
+
+    #[test]
+    fn test_builtin_gsub() {
+        let output = run_awk("BEGIN { x = \"hello\"; gsub(\"l\", \"L\", x); print x }", "");
+        assert_eq!(output, "heLLo\n");
+    }
+
+    #[test]
+    fn test_builtin_match() {
+        let output = run_awk("BEGIN { print match(\"hello\", \"ll\") }", "");
+        assert_eq!(output, "3\n");
+    }
+
+    #[test]
+    fn test_builtin_sprintf() {
+        let output = run_awk("BEGIN { print sprintf(\"%05d\", 42) }", "");
+        assert_eq!(output, "00042\n");
+    }
+
+    #[test]
+    fn test_builtin_tolower() {
+        let output = run_awk("BEGIN { print tolower(\"HELLO\") }", "");
+        assert_eq!(output, "hello\n");
+    }
+
+    #[test]
+    fn test_builtin_toupper() {
+        let output = run_awk("BEGIN { print toupper(\"hello\") }", "");
+        assert_eq!(output, "HELLO\n");
+    }
+
+    #[test]
+    fn test_builtin_math() {
+        let output = run_awk("BEGIN { print int(3.7), sqrt(4), sin(0) }", "");
+        assert_eq!(output, "3 2 0\n");
+    }
+
+    #[test]
+    fn test_ternary() {
+        let output = run_awk("BEGIN { print 1 ? \"yes\" : \"no\" }", "");
+        assert_eq!(output, "yes\n");
+    }
+
+    #[test]
+    fn test_concatenation() {
+        let output = run_awk("BEGIN { print \"a\" \"b\" \"c\" }", "");
+        assert_eq!(output, "abc\n");
+    }
+
+    #[test]
+    fn test_unary_ops() {
+        let output = run_awk("BEGIN { x = 5; print -x, +x, !0 }", "");
+        assert_eq!(output, "-5 5 1\n");
+    }
+
+    #[test]
+    fn test_post_increment() {
+        let output = run_awk("BEGIN { x = 5; print x++ \" \" x }", "");
+        assert_eq!(output, "5 6\n");
+    }
+
+    #[test]
+    fn test_pre_increment() {
+        let output = run_awk("BEGIN { x = 5; print ++x }", "");
+        assert_eq!(output, "6\n");
+    }
+
+    #[test]
+    fn test_compound_assign() {
+        let output = run_awk("BEGIN { x = 10; x += 5; x -= 3; x *= 2; print x }", "");
+        assert_eq!(output, "24\n");
+    }
+
+    #[test]
+    fn test_getline_var() {
+        let output = run_awk("{ getline next_line; print $0, next_line }", "a\nb");
+        // When we read "a", getline reads "b" into next_line
+        assert!(output.contains("a") && output.contains("b"));
+    }
+
+    #[test]
+    fn test_fpat() {
+        let output = run_awk("BEGIN { FPAT = \"[^,]+\" } { print $1, $2 }", "a,b,c");
+        assert_eq!(output, "a b\n");
+    }
+
+    #[test]
+    fn test_fieldwidths() {
+        let output = run_awk("BEGIN { FIELDWIDTHS = \"2 3 2\" } { print $1, $2 }", "abcdefg");
+        assert_eq!(output, "ab cde\n");
+    }
+
+    #[test]
+    fn test_paragraph_mode() {
+        let output = run_awk("BEGIN { RS = \"\" } { print NR, NF }", "a b\nc d\n\ne f");
+        // First paragraph has 4 words across 2 lines, second has 2 words
+        assert!(output.contains("1"));
     }
 }
