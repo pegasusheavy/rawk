@@ -1,6 +1,6 @@
 # rawk
 
-[![CI](https://github.com/PegasusHeavyIndustries/rawk/actions/workflows/ci.yml/badge.svg)](https://github.com/PegasusHeavyIndustries/rawk/actions/workflows/ci.yml)
+[![CI](https://github.com/pegasusheavy/rawk/actions/workflows/ci.yml/badge.svg)](https://github.com/pegasusheavy/rawk/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/rawk.svg)](https://crates.io/crates/rawk)
 [![Documentation](https://docs.rs/rawk/badge.svg)](https://docs.rs/rawk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -25,7 +25,7 @@ A 100% POSIX-compatible AWK implementation in Rust with GNU AWK (gawk) extension
 ### From Source
 
 ```bash
-git clone https://github.com/PegasusHeavyIndustries/rawk.git
+git clone https://github.com/pegasusheavy/rawk.git
 cd rawk
 cargo build --release
 ```
