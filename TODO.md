@@ -149,7 +149,7 @@ The implementation includes:
 ## License
 
 Dual-licensed under MIT and Apache 2.0.
-Copyright (c) 2025 Pegasus Heavy Industries LLC.
+Copyright (c) 2026 Pegasus Heavy Industries LLC.
 
 ---
 
