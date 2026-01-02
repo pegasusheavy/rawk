@@ -419,4 +419,102 @@ mod tests {
         assert_eq!(itoa_fast(-123), "-123");
         assert_eq!(itoa_fast(1000000), "1000000");
     }
+
+    #[test]
+    fn test_format_number_nan() {
+        assert_eq!(format_number(f64::NAN, "%.6g"), "nan");
+    }
+
+    #[test]
+    fn test_format_number_inf() {
+        assert_eq!(format_number(f64::INFINITY, "%.6g"), "inf");
+        assert_eq!(format_number(f64::NEG_INFINITY, "%.6g"), "-inf");
+    }
+
+    #[test]
+    fn test_format_number_integer() {
+        assert_eq!(format_number(42.0, "%.6g"), "42");
+        assert_eq!(format_number(-100.0, "%.6g"), "-100");
+    }
+
+    #[test]
+    fn test_format_number_float() {
+        assert_eq!(format_number(3.14, "%.6g"), "3.14");
+    }
+
+    #[test]
+    fn test_from_number() {
+        let v = Value::from_number(3.14);
+        assert_eq!(v.to_number(), 3.14);
+    }
+
+    #[test]
+    fn test_is_truthy_numeric_string() {
+        let v = Value::NumericString("42".to_string(), 42.0);
+        assert!(v.is_truthy());
+        
+        let empty = Value::NumericString("".to_string(), 0.0);
+        assert!(!empty.is_truthy());
+    }
+
+    #[test]
+    fn test_comparison_number_vs_string() {
+        let n = Value::Number(10.0);
+        let s = Value::from_string("hello".to_string());
+        // Number vs non-numeric string
+        assert!(compare_values(&n, &s) != Ordering::Equal);
+    }
+
+    #[test]
+    fn test_comparison_uninitialized() {
+        let u = Value::Uninitialized;
+        let n = Value::Number(1.0);
+        // Uninitialized (0) vs 1 should be Less
+        assert_eq!(compare_values(&u, &n), Ordering::Less);
+    }
+
+    #[test]
+    fn test_parse_leading_with_sign() {
+        assert_eq!(parse_leading_number("+42"), 42.0);
+        assert_eq!(parse_leading_number("  +3.14"), 3.14);
+    }
+
+    #[test]
+    fn test_parse_leading_exponent() {
+        assert_eq!(parse_leading_number("1e-5"), 1e-5);
+        assert_eq!(parse_leading_number("2E+3"), 2000.0);
+    }
+
+    #[test]
+    fn test_numeric_string_with_exponent() {
+        let v = Value::from_string("1e5".to_string());
+        assert!(v.is_numeric_string());
+        assert_eq!(v.to_number(), 1e5);
+    }
+
+    #[test]
+    fn test_numeric_string_with_sign() {
+        let v = Value::from_string("-42.5".to_string());
+        assert!(v.is_numeric_string());
+        assert_eq!(v.to_number(), -42.5);
+    }
+
+    #[test]
+    fn test_numeric_string_whitespace() {
+        let v = Value::from_string("  123  ".to_string());
+        assert!(v.is_numeric_string());
+        assert_eq!(v.to_number(), 123.0);
+    }
+
+    #[test]
+    fn test_to_string_val_uninitialized() {
+        let v = Value::Uninitialized;
+        assert_eq!(v.to_string_val(), "");
+    }
+
+    #[test]
+    fn test_to_number_uninitialized() {
+        let v = Value::Uninitialized;
+        assert_eq!(v.to_number(), 0.0);
+    }
 }

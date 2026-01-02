@@ -82,7 +82,7 @@ fn test_cli_variable() {
 fn test_cli_program_file() {
     let mut file = NamedTempFile::new().unwrap();
     writeln!(file, r#"BEGIN {{ print "from file" }}"#).unwrap();
-    
+
     let path = file.path().to_str().unwrap();
     let output = run_rawk(&["-f", path], None).unwrap();
     assert_eq!(output, "from file\n");
@@ -120,7 +120,7 @@ fn test_cli_multiple_inputs() {
     writeln!(file1, "a").unwrap();
     let mut file2 = NamedTempFile::new().unwrap();
     writeln!(file2, "b").unwrap();
-    
+
     let path1 = file1.path().to_str().unwrap();
     let path2 = file2.path().to_str().unwrap();
     let output = run_rawk(&["{ print }", path1, path2], None).unwrap();

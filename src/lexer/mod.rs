@@ -823,4 +823,156 @@ mod tests {
         let tokens = lexer.tokenize().unwrap();
         assert!(matches!(tokens[0].kind, TokenKind::Eof));
     }
+
+    #[test]
+    fn test_regex_with_escapes_complete() {
+        let mut lexer = Lexer::new(r#"/\d+\.\d*/"#);
+        let tokens = lexer.tokenize().unwrap();
+        if let TokenKind::Regex(s) = &tokens[0].kind {
+            assert!(s.contains(r"\d"));
+        } else {
+            panic!("Expected regex token");
+        }
+    }
+
+    #[test]
+    fn test_string_unknown_escape() {
+        // Unknown escape sequences should just use the character
+        let mut lexer = Lexer::new(r#""\q""#);
+        let tokens = lexer.tokenize().unwrap();
+        if let TokenKind::String(s) = &tokens[0].kind {
+            assert_eq!(s, "q");
+        } else {
+            panic!("Expected string token");
+        }
+    }
+
+    #[test]
+    fn test_number_leading_dot() {
+        let mut lexer = Lexer::new(".123 .5e2");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Number(n) if (n - 0.123).abs() < 0.001));
+        assert!(matches!(tokens[1].kind, TokenKind::Number(n) if n == 50.0));
+    }
+
+    #[test]
+    fn test_number_exponent_variations() {
+        let mut lexer = Lexer::new("1e5 1E5 1e+5 1e-5 1.5e10");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Number(n) if n == 1e5));
+        assert!(matches!(tokens[1].kind, TokenKind::Number(n) if n == 1e5));
+        assert!(matches!(tokens[2].kind, TokenKind::Number(n) if n == 1e5));
+        assert!(matches!(tokens[3].kind, TokenKind::Number(n) if n == 1e-5));
+        assert!(matches!(tokens[4].kind, TokenKind::Number(n) if n == 1.5e10));
+    }
+
+    #[test]
+    fn test_regex_after_comma() {
+        // After comma, / should be regex
+        let mut lexer = Lexer::new("gsub(/a/, /b/)");
+        let tokens = lexer.tokenize().unwrap();
+        // gsub ( /a/ , /b/ )
+        assert!(matches!(&tokens[2].kind, TokenKind::Regex(s) if s == "a"));
+        assert!(matches!(&tokens[4].kind, TokenKind::Regex(s) if s == "b"));
+    }
+
+    #[test]
+    fn test_regex_after_operators() {
+        // After various operators, / should be regex
+        let mut lexer = Lexer::new("x ~ /a/ && /b/");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(&tokens[2].kind, TokenKind::Regex(s) if s == "a"));
+        assert!(matches!(&tokens[4].kind, TokenKind::Regex(s) if s == "b"));
+    }
+
+    #[test]
+    fn test_multiple_newlines() {
+        let mut lexer = Lexer::new("a\n\n\nb");
+        let tokens = lexer.tokenize().unwrap();
+        // Should have multiple newline tokens
+        let newline_count = tokens.iter().filter(|t| matches!(t.kind, TokenKind::Newline)).count();
+        assert!(newline_count >= 2);
+    }
+
+    #[test]
+    fn test_comment_at_end() {
+        let mut lexer = Lexer::new("x # comment at end");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(&tokens[0].kind, TokenKind::Identifier(s) if s == "x"));
+        assert!(matches!(tokens[1].kind, TokenKind::Eof));
+    }
+
+    #[test]
+    fn test_identifier_with_underscore() {
+        let mut lexer = Lexer::new("_var var_name my_func_2");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(&tokens[0].kind, TokenKind::Identifier(s) if s == "_var"));
+        assert!(matches!(&tokens[1].kind, TokenKind::Identifier(s) if s == "var_name"));
+        assert!(matches!(&tokens[2].kind, TokenKind::Identifier(s) if s == "my_func_2"));
+    }
+
+    #[test]
+    fn test_string_with_all_escapes() {
+        let mut lexer = Lexer::new(r#""\b\f""#);
+        let tokens = lexer.tokenize().unwrap();
+        if let TokenKind::String(s) = &tokens[0].kind {
+            assert!(s.contains('\x08'));  // backspace
+            assert!(s.contains('\x0C'));  // form feed
+        } else {
+            panic!("Expected string token");
+        }
+    }
+
+    #[test]
+    fn test_invalid_hex_escape() {
+        // Invalid hex should fall back gracefully
+        let mut lexer = Lexer::new(r#""\xGG""#);
+        let tokens = lexer.tokenize().unwrap();
+        if let TokenKind::String(s) = &tokens[0].kind {
+            // Should contain x since the hex parse failed
+            assert!(s.contains("GG") || s.contains("x"));
+        } else {
+            panic!("Expected string token");
+        }
+    }
+
+    #[test]
+    fn test_single_pipe() {
+        let mut lexer = Lexer::new("a | b");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[1].kind, TokenKind::Pipe));
+    }
+
+    #[test]
+    fn test_double_pipe() {
+        let mut lexer = Lexer::new("a || b");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[1].kind, TokenKind::Or));
+    }
+
+    #[test]
+    fn test_colon() {
+        let mut lexer = Lexer::new("a ? b : c");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[1].kind, TokenKind::Question));
+        assert!(matches!(tokens[3].kind, TokenKind::Colon));
+    }
+
+    #[test]
+    fn test_caret() {
+        let mut lexer = Lexer::new("x ^ 2 x ^= 3");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[1].kind, TokenKind::Caret));
+        assert!(matches!(tokens[4].kind, TokenKind::CaretAssign));
+    }
+
+    #[test]
+    fn test_all_assignment_types() {
+        let mut lexer = Lexer::new("a += 1 b -= 1 c *= 1 d %= 1");
+        let tokens = lexer.tokenize().unwrap();
+        assert!(matches!(tokens[1].kind, TokenKind::PlusAssign));
+        assert!(matches!(tokens[4].kind, TokenKind::MinusAssign));
+        assert!(matches!(tokens[7].kind, TokenKind::StarAssign));
+        assert!(matches!(tokens[10].kind, TokenKind::PercentAssign));
+    }
 }

@@ -1230,4 +1230,241 @@ mod tests {
         assert_eq!(program.functions[0].name, "add");
         assert_eq!(program.functions[0].params, vec!["a", "b"]);
     }
+
+    #[test]
+    fn test_if_else() {
+        let program = parse(r#"{ if (x) print 1; else print 2 }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_while_loop() {
+        let program = parse(r#"{ while (x < 10) x++ }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_for_loop() {
+        let program = parse(r#"{ for (i=0; i<10; i++) print i }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_for_in_loop() {
+        let program = parse(r#"{ for (k in a) print k }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_do_while() {
+        let program = parse(r#"{ do { x++ } while (x < 10) }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_delete() {
+        let program = parse(r#"{ delete a[1] }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_delete_array() {
+        let program = parse(r#"{ delete a }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_break_continue() {
+        let program = parse(r#"{ break; continue }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_next_nextfile() {
+        let program = parse(r#"{ next } { nextfile }"#).unwrap();
+        assert_eq!(program.rules.len(), 2);
+    }
+
+    #[test]
+    fn test_exit() {
+        let program = parse(r#"{ exit 0 }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_return() {
+        let program = parse(r#"function f() { return 42 }"#).unwrap();
+        assert_eq!(program.functions.len(), 1);
+    }
+
+    #[test]
+    fn test_printf() {
+        let program = parse(r#"{ printf "%d", x }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_getline() {
+        let program = parse(r#"{ getline x < "file" }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_pipe_getline() {
+        let program = parse(r#"{ "cmd" | getline x }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_output_redirect() {
+        let program = parse(r#"{ print "x" > "file" }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_output_append() {
+        let program = parse(r#"{ print "x" >> "file" }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_output_pipe() {
+        let program = parse(r#"{ print "x" | "cmd" }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_ternary() {
+        let program = parse(r#"{ x = a ? b : c }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_logical_and_or() {
+        let program = parse(r#"{ x = a && b || c }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_array_in() {
+        let program = parse(r#"{ x = (1 in a) }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_regex_match() {
+        let program = parse(r#"{ x = ($0 ~ /foo/) }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_concatenation() {
+        let program = parse(r#"{ x = a b c }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_field_access() {
+        let program = parse(r#"{ print $1, $NF, $(2+1) }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_array_multi_index() {
+        let program = parse(r#"{ a[1,2,3] = x }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_function_call() {
+        let program = parse(r#"{ x = substr(s, 1, 5) }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_pre_increment() {
+        let program = parse(r#"{ ++x; --y }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_post_increment() {
+        let program = parse(r#"{ x++; y-- }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_compound_assign() {
+        let program = parse(r#"{ x += 1; y -= 1; z *= 2; w /= 2; v %= 3; p ^= 2 }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_range_pattern() {
+        let program = parse(r#"/start/,/end/ { print }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+        assert!(matches!(&program.rules[0].pattern, Some(Pattern::Range { .. })));
+    }
+
+    #[test]
+    fn test_expression_pattern() {
+        let program = parse(r#"NR > 5 { print }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_beginfile_endfile() {
+        let program = parse(r#"BEGINFILE { x = 1 } ENDFILE { print }"#).unwrap();
+        assert_eq!(program.rules.len(), 2);
+        assert!(matches!(program.rules[0].pattern, Some(Pattern::BeginFile)));
+        assert!(matches!(program.rules[1].pattern, Some(Pattern::EndFile)));
+    }
+
+    #[test]
+    fn test_empty_statement() {
+        let program = parse(r#"{ ; ; ; }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_block_statement() {
+        let program = parse(r#"{ { { x = 1 } } }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_multiple_rules() {
+        let program = parse(r#"BEGIN { } { } END { }"#).unwrap();
+        assert_eq!(program.rules.len(), 3);
+    }
+
+    #[test]
+    fn test_parenthesized_expression() {
+        let program = parse(r#"{ x = (1 + 2) * 3 }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_unary_ops() {
+        let program = parse(r#"{ x = -a + +b }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_not_operator() {
+        let program = parse(r#"{ x = !a }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_comparison_ops() {
+        let program = parse(r#"{ x = a < b && b <= c && c > d && d >= e && e == f && f != g }"#).unwrap();
+        assert_eq!(program.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_exponentiation() {
+        let program = parse(r#"{ x = 2^3^4 }"#).unwrap();  // right associative
+        assert_eq!(program.rules.len(), 1);
+    }
 }
