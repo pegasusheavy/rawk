@@ -4,13 +4,13 @@ A 100% POSIX-compatible AWK implementation in Rust, with comprehensive GNU AWK (
 
 ## 🎉 Feature Complete
 
-**RAWK is now 100% POSIX AWK compliant** with extensive GNU AWK extension support. All core AWK functionality is implemented and tested.
+**RAWK is now 100% POSIX AWK compliant** with comprehensive GNU AWK extension support. All core AWK functionality is implemented and tested.
 
 | Category | Status |
 |----------|--------|
 | POSIX AWK | ✅ Complete |
-| GNU AWK Extensions | ✅ Core features complete |
-| Test Coverage | 225 tests passing |
+| GNU AWK Extensions | ✅ Complete |
+| Test Coverage | 231 tests passing |
 
 ---
 
@@ -90,17 +90,25 @@ A 100% POSIX-compatible AWK implementation in Rust, with comprehensive GNU AWK (
 
 ---
 
-### 🔄 REMAINING WORK
+#### Field Splitting Extensions (gawk)
+- [x] `FPAT` - field pattern for content-based splitting
+- [x] `FIELDWIDTHS` - fixed-width field splitting
 
-#### Future Enhancements (Lower Priority)
-- [ ] `FPAT` - field pattern for field splitting
-- [ ] `FIELDWIDTHS` - fixed-width field splitting
+#### System Information (gawk)
+- [x] `PROCINFO` array - process/system information
+
+#### CLI Options
+- [x] `--posix` / `-P` - strict POSIX mode (disable extensions)
+- [x] `--traditional` / `-c` - traditional AWK mode (disable extensions)
+
+---
+
+### 🔄 REMAINING WORK (Optional Enhancements)
+
+#### Advanced Features (Not Commonly Used)
 - [ ] Two-way pipes (`|&`)
 - [ ] `@include` directive
 - [ ] Network I/O (`/inet/tcp`, `/inet/udp`)
-- [ ] `PROCINFO` array
-- [ ] `--posix` strict mode flag
-- [ ] `--traditional` mode flag
 
 ---
 
@@ -108,9 +116,9 @@ A 100% POSIX-compatible AWK implementation in Rust, with comprehensive GNU AWK (
 
 ```
 Unit Tests:       26 (lexer, parser, value system)
-E2E Tests:       165 (complete AWK programs)
+E2E Tests:       171 (complete AWK programs)
 Compat Tests:     34 (gawk comparison)
-Total:           225 tests
+Total:           231 tests
 ```
 
 All tests pass with 100% success rate.

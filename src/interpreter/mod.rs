@@ -71,6 +71,14 @@ pub struct Interpreter<'a> {
     pub(crate) convfmt: String,
     /// Subscript separator (SUBSEP)
     pub(crate) subsep: String,
+    /// Field pattern (FPAT) - gawk extension
+    pub(crate) fpat: String,
+    /// Fixed field widths (FIELDWIDTHS) - gawk extension
+    pub(crate) fieldwidths: String,
+    
+    /// Mode flags
+    pub(crate) posix_mode: bool,
+    pub(crate) traditional_mode: bool,
 
     /// Current record ($0)
     pub(crate) record: String,
@@ -155,6 +163,10 @@ impl<'a> Interpreter<'a> {
             ofmt: "%.6g".to_string(),
             convfmt: "%.6g".to_string(),
             subsep: "\x1c".to_string(),
+            fpat: String::new(),
+            fieldwidths: String::new(),
+            posix_mode: false,
+            traditional_mode: false,
             record: String::new(),
             fields: Vec::new(),
             nf: 0,
@@ -190,6 +202,25 @@ impl<'a> Interpreter<'a> {
     /// Set the field separator
     pub fn set_fs(&mut self, fs: &str) {
         self.fs = fs.to_string();
+        // Clear FPAT and FIELDWIDTHS when FS is set
+        self.fpat.clear();
+        self.fieldwidths.clear();
+    }
+
+    /// Set POSIX strict mode
+    pub fn set_posix_mode(&mut self, enabled: bool) {
+        self.posix_mode = enabled;
+        if enabled {
+            self.traditional_mode = false;
+        }
+    }
+
+    /// Set traditional AWK mode (no gawk extensions)
+    pub fn set_traditional_mode(&mut self, enabled: bool) {
+        self.traditional_mode = enabled;
+        if enabled {
+            self.posix_mode = false;
+        }
     }
 
     /// Set a variable before execution
@@ -219,7 +250,7 @@ impl<'a> Interpreter<'a> {
         // Process input files
         for input in inputs {
             self.fnr = 0;
-            
+
             // Execute BEGINFILE rules (gawk extension)
             for rule in &self.program.rules {
                 if matches!(&rule.pattern, Some(Pattern::BeginFile)) {
@@ -231,9 +262,9 @@ impl<'a> Interpreter<'a> {
                     }
                 }
             }
-            
+
             self.process_input(input, output)?;
-            
+
             // Execute ENDFILE rules (gawk extension)
             for rule in &self.program.rules {
                 if matches!(&rule.pattern, Some(Pattern::EndFile)) {
@@ -245,7 +276,7 @@ impl<'a> Interpreter<'a> {
                     }
                 }
             }
-            
+
             if self.should_exit {
                 return Ok(self.exit_code);
             }
@@ -315,7 +346,7 @@ impl<'a> Interpreter<'a> {
         loop {
             line.clear();
             let bytes_read = input.read_line(&mut line).map_err(Error::Io)?;
-            
+
             // Check if line is blank (empty or only whitespace)
             let is_blank = line.trim().is_empty();
 
@@ -345,7 +376,7 @@ impl<'a> Interpreter<'a> {
                     self.fnr += 1;
                     self.set_record(&record);
                     self.process_current_record(output)?;
-                    
+
                     record.clear();
                     in_record = false;
 
@@ -381,7 +412,7 @@ impl<'a> Interpreter<'a> {
     fn process_current_record<W: Write>(&mut self, output: &mut W) -> Result<()> {
         for (idx, rule) in self.program.rules.iter().enumerate() {
             // Skip special patterns that are handled separately
-            if matches!(&rule.pattern, 
+            if matches!(&rule.pattern,
                 Some(Pattern::Begin) | Some(Pattern::End) |
                 Some(Pattern::BeginFile) | Some(Pattern::EndFile)) {
                 continue;
@@ -426,6 +457,19 @@ impl<'a> Interpreter<'a> {
         let estimated_fields = self.record.len() / 8 + 1;
         self.fields.reserve(estimated_fields.min(64));
 
+        // Check for FPAT (field pattern) - gawk extension
+        if !self.fpat.is_empty() && !self.posix_mode && !self.traditional_mode {
+            self.split_fields_fpat();
+            return;
+        }
+
+        // Check for FIELDWIDTHS - gawk extension
+        if !self.fieldwidths.is_empty() && !self.posix_mode && !self.traditional_mode {
+            self.split_fields_widths();
+            return;
+        }
+
+        // Standard FS-based splitting
         if self.fs == " " {
             // Special case: split on runs of whitespace, trimming leading/trailing
             // Use byte-based iteration for ASCII optimization
@@ -459,6 +503,48 @@ impl<'a> Interpreter<'a> {
             }
         }
 
+        self.nf = self.fields.len();
+    }
+
+    /// Split fields using FPAT (field pattern matching)
+    fn split_fields_fpat(&mut self) {
+        let fpat = self.fpat.clone();
+        let record = self.record.clone();
+        
+        if let Some(regex) = self.regex_cache.get(&fpat) {
+            for mat in regex.find_iter(&record) {
+                self.fields.push(mat.as_str().to_string());
+            }
+        } else if let Ok(regex) = Regex::new(&fpat) {
+            for mat in regex.find_iter(&record) {
+                self.fields.push(mat.as_str().to_string());
+            }
+            self.regex_cache.insert(fpat, regex);
+        }
+        
+        self.nf = self.fields.len();
+    }
+
+    /// Split fields using FIELDWIDTHS (fixed-width fields)
+    fn split_fields_widths(&mut self) {
+        let widths: Vec<usize> = self.fieldwidths
+            .split_whitespace()
+            .filter_map(|s| s.parse().ok())
+            .collect();
+        
+        let mut pos = 0;
+        let chars: Vec<char> = self.record.chars().collect();
+        
+        for width in widths {
+            if pos >= chars.len() {
+                break;
+            }
+            let end = (pos + width).min(chars.len());
+            let field: String = chars[pos..end].iter().collect();
+            self.fields.push(field);
+            pos = end;
+        }
+        
         self.nf = self.fields.len();
     }
 
@@ -572,11 +658,14 @@ impl<'a> Interpreter<'a> {
             "RSTART" => Value::Number(self.rstart as f64),
             "RLENGTH" => Value::Number(self.rlength as f64),
             "ARGC" => Value::Number(self.argc as f64),
+            // gawk extensions
+            "FPAT" => Value::from_string(self.fpat.clone()),
+            "FIELDWIDTHS" => Value::from_string(self.fieldwidths.clone()),
             _ => self.variables.get(name).cloned().unwrap_or(Value::Uninitialized),
         }
     }
 
-    /// Get an element from ARGV or ENVIRON arrays
+    /// Get an element from ARGV, ENVIRON, or PROCINFO arrays
     pub(crate) fn get_special_array(&self, array: &str, key: &str) -> Option<Value> {
         match array {
             "ARGV" => {
@@ -586,6 +675,31 @@ impl<'a> Interpreter<'a> {
             }
             "ENVIRON" => {
                 self.environ.get(key).map(|s| Value::from_string(s.clone()))
+            }
+            "PROCINFO" => {
+                // gawk PROCINFO array - system information
+                match key {
+                    "version" => Some(Value::from_string(env!("CARGO_PKG_VERSION").to_string())),
+                    "strftime" => Some(Value::from_string("%a %b %e %H:%M:%S %Z %Y".to_string())),
+                    "FS" => {
+                        if !self.fpat.is_empty() {
+                            Some(Value::from_string("FPAT".to_string()))
+                        } else if !self.fieldwidths.is_empty() {
+                            Some(Value::from_string("FIELDWIDTHS".to_string()))
+                        } else {
+                            Some(Value::from_string("FS".to_string()))
+                        }
+                    }
+                    "identifiers" => Some(Value::Number(0.0)), // Not implemented
+                    "pid" => Some(Value::Number(std::process::id() as f64)),
+                    "ppid" => Some(Value::Number(0.0)), // Not easily available in Rust
+                    "uid" => Some(Value::Number(0.0)), // Platform specific
+                    "gid" => Some(Value::Number(0.0)), // Platform specific
+                    "euid" => Some(Value::Number(0.0)), // Platform specific
+                    "egid" => Some(Value::Number(0.0)), // Platform specific
+                    "pgrpid" => Some(Value::Number(0.0)), // Platform specific
+                    _ => Some(Value::Uninitialized),
+                }
             }
             _ => None,
         }
@@ -606,13 +720,29 @@ impl<'a> Interpreter<'a> {
                 self.nf = new_nf;
                 self.record = self.fields.join(&self.ofs);
             }
-            "FS" => self.fs = value.to_string_val(),
+            "FS" => {
+                self.fs = value.to_string_val();
+                // Clear FPAT and FIELDWIDTHS when FS is set
+                self.fpat.clear();
+                self.fieldwidths.clear();
+            }
             "OFS" => self.ofs = value.to_string_val(),
             "RS" => self.rs = value.to_string_val(),
             "ORS" => self.ors = value.to_string_val(),
             "OFMT" => self.ofmt = value.to_string_val(),
             "CONVFMT" => self.convfmt = value.to_string_val(),
             "SUBSEP" => self.subsep = value.to_string_val(),
+            // gawk extensions
+            "FPAT" => {
+                self.fpat = value.to_string_val();
+                // FPAT takes precedence over FS and FIELDWIDTHS
+                self.fieldwidths.clear();
+            }
+            "FIELDWIDTHS" => {
+                self.fieldwidths = value.to_string_val();
+                // FIELDWIDTHS takes precedence over FS
+                self.fpat.clear();
+            }
             _ => {
                 self.variables.insert(name.to_string(), value);
             }
@@ -626,7 +756,7 @@ impl<'a> Interpreter<'a> {
 
     pub(crate) fn get_array_element(&self, array: &str, key: &str) -> Value {
         let array = self.resolve_array_name(array);
-        
+
         // Check for special arrays first
         if let Some(val) = self.get_special_array(array, key) {
             return val;
@@ -649,7 +779,7 @@ impl<'a> Interpreter<'a> {
 
     pub(crate) fn array_key_exists(&self, array: &str, key: &str) -> bool {
         let array = self.resolve_array_name(array);
-        
+
         // Check special arrays
         match array {
             "ARGV" => {

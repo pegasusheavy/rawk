@@ -240,7 +240,7 @@ impl<'a> Interpreter<'a> {
         // Store in destination (or source if no dest)
         let target = dest_name.unwrap_or_else(|| source_name.clone());
         self.arrays.remove(&target);
-        
+
         for (i, item) in sorted.iter().enumerate() {
             let key = (i + 1).to_string();
             self.set_array_element(&target, &key, Value::from_string(item.clone()));
@@ -498,7 +498,7 @@ impl<'a> Interpreter<'a> {
             }
 
             // === GAWK Extensions ===
-            
+
             // Time functions
             "systime" => {
                 // Return current time as seconds since epoch
@@ -516,7 +516,7 @@ impl<'a> Interpreter<'a> {
                 let parts: Vec<i64> = datespec.split_whitespace()
                     .filter_map(|s| s.parse().ok())
                     .collect();
-                
+
                 if parts.len() >= 6 {
                     // Simple implementation using chrono-like calculation
                     // This is a simplified version; for full accuracy we'd need chrono crate
@@ -526,7 +526,7 @@ impl<'a> Interpreter<'a> {
                     let hour = parts[3];
                     let min = parts[4];
                     let sec = parts[5];
-                    
+
                     // Simplified epoch calculation (not handling DST or timezones)
                     let epoch = simple_mktime(year, month, day, hour, min, sec);
                     Ok(Some(Value::Number(epoch as f64)))
@@ -547,7 +547,7 @@ impl<'a> Interpreter<'a> {
                             .map(|d| d.as_secs())
                             .unwrap_or(0)
                     });
-                
+
                 let result = format_strftime(&format, timestamp);
                 Ok(Some(Value::from_string(result)))
             }
@@ -558,9 +558,9 @@ impl<'a> Interpreter<'a> {
                 let replacement = args.get(1).map(|v| v.to_string_val()).unwrap_or_default();
                 let how = args.get(2).map(|v| v.to_string_val()).unwrap_or_else(|| "g".to_string());
                 let target = args.get(3).map(|v| v.to_string_val()).unwrap_or_else(|| self.record.clone());
-                
+
                 let re = self.get_regex(&pattern)?;
-                
+
                 // "g" or "G" means global, otherwise it's the occurrence number
                 let result = if how.eq_ignore_ascii_case("g") {
                     re.replace_all(&target, replacement.replace("&", "$0").as_str()).to_string()
@@ -588,7 +588,7 @@ impl<'a> Interpreter<'a> {
                     // Default to first occurrence
                     re.replace(&target, replacement.replace("&", "$0").as_str()).to_string()
                 };
-                
+
                 Ok(Some(Value::from_string(result)))
             }
 
@@ -609,7 +609,7 @@ impl<'a> Interpreter<'a> {
             .collect();
 
         // Save any arrays that share names with parameters (for local arrays)
-        let saved_arrays: std::collections::HashMap<String, std::collections::HashMap<String, Value>> = 
+        let saved_arrays: std::collections::HashMap<String, std::collections::HashMap<String, Value>> =
             func.params.iter()
             .filter_map(|name| self.arrays.get(name).map(|a| (name.clone(), a.clone())))
             .collect();
@@ -662,7 +662,7 @@ impl<'a> Interpreter<'a> {
                 self.arrays.insert(param.clone(), arr.clone());
             } else if !array_refs.get(func.params.iter().position(|p| p == param).unwrap_or(usize::MAX))
                 .map(|r| r.is_some())
-                .unwrap_or(false) 
+                .unwrap_or(false)
             {
                 self.arrays.remove(param);
             }
@@ -705,18 +705,18 @@ fn regex_sub_helper(re: &regex::Regex, replacement: &str, target: &str, global: 
 fn simple_mktime(year: i64, month: i64, day: i64, hour: i64, min: i64, sec: i64) -> i64 {
     // Days in each month (non-leap year)
     const DAYS_IN_MONTH: [i64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    
+
     fn is_leap_year(year: i64) -> bool {
         (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
     }
-    
+
     fn days_in_year(year: i64) -> i64 {
         if is_leap_year(year) { 366 } else { 365 }
     }
-    
+
     // Calculate days from epoch (1970-01-01)
     let mut days: i64 = 0;
-    
+
     // Add days for complete years
     for y in 1970..year {
         days += days_in_year(y);
@@ -724,7 +724,7 @@ fn simple_mktime(year: i64, month: i64, day: i64, hour: i64, min: i64, sec: i64)
     for y in year..1970 {
         days -= days_in_year(y);
     }
-    
+
     // Add days for complete months in current year
     for m in 1..month {
         let m_idx = (m - 1) as usize;
@@ -735,10 +735,10 @@ fn simple_mktime(year: i64, month: i64, day: i64, hour: i64, min: i64, sec: i64)
             }
         }
     }
-    
+
     // Add remaining days
     days += day - 1;
-    
+
     // Convert to seconds
     days * 86400 + hour * 3600 + min * 60 + sec
 }
@@ -747,18 +747,18 @@ fn simple_mktime(year: i64, month: i64, day: i64, hour: i64, min: i64, sec: i64)
 fn format_strftime(format: &str, timestamp: u64) -> String {
     // Break down timestamp into components
     let secs = timestamp as i64;
-    
+
     // Calculate year, month, day, etc.
     let (year, month, day, hour, min, sec, wday, yday) = breakdown_time(secs);
-    
+
     let weekday_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     let month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     let weekday_full = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     let month_full = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    
+
     let mut result = String::new();
     let mut chars = format.chars().peekable();
-    
+
     while let Some(ch) = chars.next() {
         if ch == '%' {
             match chars.next() {
@@ -789,26 +789,26 @@ fn format_strftime(format: &str, timestamp: u64) -> String {
             result.push(ch);
         }
     }
-    
+
     result
 }
 
 /// Break down epoch seconds into date/time components
 fn breakdown_time(secs: i64) -> (i64, i64, i64, i64, i64, i64, i64, i64) {
     const DAYS_IN_MONTH: [i64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    
+
     fn is_leap_year(year: i64) -> bool {
         (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
     }
-    
+
     let sec = secs % 60;
     let min = (secs / 60) % 60;
     let hour = (secs / 3600) % 24;
     let mut days = secs / 86400;
-    
+
     // wday: 0 = Sunday, 1970-01-01 was Thursday (4)
     let wday = ((days + 4) % 7 + 7) % 7;
-    
+
     // Calculate year
     let mut year = 1970i64;
     loop {
@@ -824,9 +824,9 @@ fn breakdown_time(secs: i64) -> (i64, i64, i64, i64, i64, i64, i64, i64) {
             break;
         }
     }
-    
+
     let yday = days + 1; // 1-based day of year
-    
+
     // Calculate month and day
     let mut month = 1i64;
     for m in 0..12 {
@@ -841,6 +841,6 @@ fn breakdown_time(secs: i64) -> (i64, i64, i64, i64, i64, i64, i64, i64) {
         days -= dim;
     }
     let day = days + 1;
-    
+
     (year, month, day, hour, min, sec, wday, yday)
 }

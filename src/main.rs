@@ -22,6 +22,8 @@ fn run(args: &[String]) -> Result<i32, Box<dyn std::error::Error>> {
     let mut program_source: Option<String> = None;
     let mut input_files: Vec<String> = Vec::new();
     let mut variables: Vec<(String, String)> = Vec::new();
+    let mut posix_mode = false;
+    let mut traditional_mode = false;
 
     let mut i = 0;
     while i < args.len() {
@@ -35,6 +37,20 @@ fn run(args: &[String]) -> Result<i32, Box<dyn std::error::Error>> {
         if arg == "--version" {
             println!("rawk {}", env!("CARGO_PKG_VERSION"));
             return Ok(0);
+        }
+
+        if arg == "--posix" || arg == "-P" {
+            posix_mode = true;
+            traditional_mode = false;
+            i += 1;
+            continue;
+        }
+
+        if arg == "--traditional" || arg == "--compat" || arg == "-c" {
+            traditional_mode = true;
+            posix_mode = false;
+            i += 1;
+            continue;
         }
 
         if arg == "-F" {
@@ -92,6 +108,10 @@ fn run(args: &[String]) -> Result<i32, Box<dyn std::error::Error>> {
     // Create interpreter
     let mut interpreter = Interpreter::new(&program);
 
+    // Set mode flags
+    interpreter.set_posix_mode(posix_mode);
+    interpreter.set_traditional_mode(traditional_mode);
+
     // Set field separator
     interpreter.set_fs(&field_separator);
 
@@ -142,15 +162,23 @@ fn print_help() {
         r#"Usage: rawk [OPTIONS] 'program' [file ...]
        rawk [OPTIONS] -f progfile [file ...]
 
-A 100% POSIX-compatible AWK implementation in Rust.
+A 100% POSIX-compatible AWK implementation in Rust with gawk extensions.
 
 Options:
-  -F fs          Set the field separator to fs
-  -v var=val     Assign value to variable before execution
-  -f progfile    Read the AWK program from file
-  --posix        Strict POSIX mode (no extensions)
-  --version      Print version information
-  --help         Print this help message
+  -F fs            Set the field separator to fs
+  -v var=val       Assign value to variable before execution
+  -f progfile      Read the AWK program from file
+  -P, --posix      Strict POSIX mode (disable gawk extensions)
+  -c, --traditional Traditional AWK mode (disable gawk extensions)
+  --version        Print version information
+  --help           Print this help message
+
+GAWK Extensions (disabled with --posix or --traditional):
+  FPAT             Field pattern for content-based splitting
+  FIELDWIDTHS      Fixed-width field splitting
+  BEGINFILE/ENDFILE Patterns for file processing
+  systime(), mktime(), strftime() Time functions
+  gensub(), patsplit(), asort(), asorti() String/array functions
 
 Examples:
   rawk '{{ print $1 }}' file.txt

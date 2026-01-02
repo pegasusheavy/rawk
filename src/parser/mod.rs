@@ -735,11 +735,11 @@ impl Parser {
             // Look ahead to see if getline follows
             let saved_pos = self.current;
             self.advance(); // consume |
-            
+
             if self.check(&TokenKind::Getline) {
                 let location = self.current_location();
                 self.advance(); // consume getline
-                
+
                 // Optional variable name
                 let var = if let Some(TokenKind::Identifier(name)) = self.peek_kind() {
                     let name = name.clone();
@@ -748,7 +748,7 @@ impl Parser {
                 } else {
                     None
                 };
-                
+
                 return Ok(Expr::Getline {
                     var,
                     input: Some(GetlineInput::Pipe(Box::new(expr))),

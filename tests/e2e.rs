@@ -1143,7 +1143,7 @@ fn test_pipe_getline_basic() {
 
 #[test]
 fn test_pipe_getline_multiple() {
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(r#"BEGIN {
         while (("echo -e 'a\nb\nc'" | getline line) > 0) {
             print "got:", line
         }
@@ -1166,7 +1166,7 @@ fn test_array_in_function() {
     // Arrays should be passed by reference (modification visible outside)
     let output = run_awk(r#"
         function modify(arr) { arr[1] = "modified" }
-        BEGIN { 
+        BEGIN {
             a[1] = "original"
             modify(a)
             print a[1]
@@ -1294,7 +1294,7 @@ fn test_endfile() {
 #[test]
 fn test_asort() {
     // asort sorts array values
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(r#"BEGIN {
         a[1] = "cherry"
         a[2] = "apple"
         a[3] = "banana"
@@ -1307,7 +1307,7 @@ fn test_asort() {
 #[test]
 fn test_asorti() {
     // asorti sorts array indices
-    let output = run_awk(r#"BEGIN { 
+    let output = run_awk(r#"BEGIN {
         a["cherry"] = 1
         a["apple"] = 2
         a["banana"] = 3
@@ -1325,4 +1325,48 @@ fn test_patsplit() {
         for (i = 1; i <= n; i++) print a[i]
     }"#, "").unwrap();
     assert_eq!(output, "the\nquick\nfox\n");
+}
+
+// === FPAT and FIELDWIDTHS ===
+
+#[test]
+fn test_fpat_basic() {
+    // FPAT matches field content, not separators
+    let output = run_awk(r#"BEGIN { FPAT = "[^,]+" } { print $1, $2 }"#, "hello,world").unwrap();
+    assert_eq!(output, "hello world\n");
+}
+
+#[test]
+fn test_fpat_word_pattern() {
+    // FPAT matches word characters
+    let output = run_awk(r#"BEGIN { FPAT = "[A-Za-z]+" } { print $1, $2, $3 }"#, "Hello123World456Test").unwrap();
+    assert_eq!(output, "Hello World Test\n");
+}
+
+#[test]
+fn test_fieldwidths() {
+    // FIELDWIDTHS splits by character positions
+    let output = run_awk(r#"BEGIN { FIELDWIDTHS = "3 4 3" } { print $1, $2, $3 }"#, "abcdefghij").unwrap();
+    assert_eq!(output, "abc defg hij\n");
+}
+
+#[test]
+fn test_fieldwidths_short_record() {
+    // FIELDWIDTHS handles records shorter than specified widths
+    let output = run_awk(r#"BEGIN { FIELDWIDTHS = "5 5 5" } { print NF }"#, "abcdefgh").unwrap();
+    assert_eq!(output, "2\n");
+}
+
+#[test]
+fn test_procinfo_version() {
+    // PROCINFO["version"] should return the rawk version
+    let output = run_awk(r#"BEGIN { print (PROCINFO["version"] != "") }"#, "").unwrap();
+    assert_eq!(output, "1\n");
+}
+
+#[test]
+fn test_procinfo_pid() {
+    // PROCINFO["pid"] should return a positive number
+    let output = run_awk(r#"BEGIN { print (PROCINFO["pid"] > 0) }"#, "").unwrap();
+    assert_eq!(output, "1\n");
 }
