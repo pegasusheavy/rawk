@@ -119,9 +119,10 @@ impl<'a> Interpreter<'a> {
             }
 
             Stmt::ForIn { var, array, body, .. } => {
-                // Get keys from array
+                // Get keys from array (resolve aliases for pass-by-reference)
+                let resolved_array = self.array_aliases.get(array).map(|s| s.as_str()).unwrap_or(array);
                 let keys: Vec<String> = self.arrays
-                    .get(array)
+                    .get(resolved_array)
                     .map(|arr| arr.keys().cloned().collect())
                     .unwrap_or_default();
 

@@ -12,6 +12,8 @@ pub enum TokenKind {
     Identifier(String),
     Begin,
     End,
+    BeginFile,  // gawk extension
+    EndFile,    // gawk extension
     If,
     Else,
     While,
@@ -172,6 +174,8 @@ pub fn keyword_to_token(s: &str) -> Option<TokenKind> {
     match s {
         "BEGIN" => Some(TokenKind::Begin),
         "END" => Some(TokenKind::End),
+        "BEGINFILE" => Some(TokenKind::BeginFile),
+        "ENDFILE" => Some(TokenKind::EndFile),
         "if" => Some(TokenKind::If),
         "else" => Some(TokenKind::Else),
         "while" => Some(TokenKind::While),

@@ -120,6 +120,10 @@ pub struct Interpreter<'a> {
 
     /// Environment variables (ENVIRON)
     pub(crate) environ: HashMap<String, String>,
+
+    /// Array aliases for pass-by-reference in functions
+    /// Maps parameter name -> actual array name
+    pub(crate) array_aliases: HashMap<String, String>,
 }
 
 impl<'a> Interpreter<'a> {
@@ -173,6 +177,7 @@ impl<'a> Interpreter<'a> {
             argc: 0,
             argv: Vec::new(),
             environ,
+            array_aliases: HashMap::new(),
         }
     }
 
@@ -192,6 +197,11 @@ impl<'a> Interpreter<'a> {
         self.variables.insert(name.to_string(), Value::from_string(value.to_string()));
     }
 
+    /// Set the current filename (FILENAME)
+    pub fn set_filename(&mut self, filename: &str) {
+        self.filename = filename.to_string();
+    }
+
     /// Run the AWK program with given input
     pub fn run<R: BufRead, W: Write>(&mut self, inputs: Vec<R>, output: &mut W) -> Result<i32> {
         // Execute BEGIN rules
@@ -209,7 +219,33 @@ impl<'a> Interpreter<'a> {
         // Process input files
         for input in inputs {
             self.fnr = 0;
+            
+            // Execute BEGINFILE rules (gawk extension)
+            for rule in &self.program.rules {
+                if matches!(&rule.pattern, Some(Pattern::BeginFile)) {
+                    if let Some(action) = &rule.action {
+                        self.execute_block(action, output)?;
+                    }
+                    if self.should_exit {
+                        return Ok(self.exit_code);
+                    }
+                }
+            }
+            
             self.process_input(input, output)?;
+            
+            // Execute ENDFILE rules (gawk extension)
+            for rule in &self.program.rules {
+                if matches!(&rule.pattern, Some(Pattern::EndFile)) {
+                    if let Some(action) = &rule.action {
+                        self.execute_block(action, output)?;
+                    }
+                    if self.should_exit {
+                        return Ok(self.exit_code);
+                    }
+                }
+            }
+            
             if self.should_exit {
                 return Ok(self.exit_code);
             }
@@ -228,6 +264,11 @@ impl<'a> Interpreter<'a> {
     }
 
     fn process_input<R: BufRead, W: Write>(&mut self, mut input: R, output: &mut W) -> Result<()> {
+        // Check for paragraph mode (RS = "")
+        if self.rs.is_empty() {
+            return self.process_input_paragraph_mode(input, output);
+        }
+
         let mut line = String::new();
 
         loop {
@@ -249,31 +290,7 @@ impl<'a> Interpreter<'a> {
             self.fnr += 1;
             self.set_record(&line);
 
-            // Process main rules
-            for (idx, rule) in self.program.rules.iter().enumerate() {
-                if matches!(&rule.pattern, Some(Pattern::Begin) | Some(Pattern::End)) {
-                    continue;
-                }
-
-                let matches = self.pattern_matches(&rule.pattern, idx)?;
-                if matches {
-                    if let Some(action) = &rule.action {
-                        self.execute_block(action, output)?;
-                    } else {
-                        // Default action is to print $0
-                        writeln!(output, "{}", self.record).map_err(Error::Io)?;
-                    }
-                }
-
-                if self.should_next {
-                    self.should_next = false;
-                    break;
-                }
-
-                if self.should_nextfile || self.should_exit {
-                    break;
-                }
-            }
+            self.process_current_record(output)?;
 
             if self.should_nextfile {
                 self.should_nextfile = false;
@@ -285,6 +302,110 @@ impl<'a> Interpreter<'a> {
             }
         }
 
+        Ok(())
+    }
+
+    /// Process input in paragraph mode (RS = "")
+    /// Blank lines separate records; multiple blank lines count as one separator
+    fn process_input_paragraph_mode<R: BufRead, W: Write>(&mut self, mut input: R, output: &mut W) -> Result<()> {
+        let mut line = String::new();
+        let mut record = String::new();
+        let mut in_record = false;
+
+        loop {
+            line.clear();
+            let bytes_read = input.read_line(&mut line).map_err(Error::Io)?;
+            
+            // Check if line is blank (empty or only whitespace)
+            let is_blank = line.trim().is_empty();
+
+            if bytes_read == 0 {
+                // EOF - process any remaining record
+                if !record.is_empty() {
+                    // Remove trailing newline
+                    while record.ends_with('\n') || record.ends_with('\r') {
+                        record.pop();
+                    }
+                    self.nr += 1;
+                    self.fnr += 1;
+                    self.set_record(&record);
+                    self.process_current_record(output)?;
+                }
+                break;
+            }
+
+            if is_blank {
+                // Blank line - end of record if we're in one
+                if in_record && !record.is_empty() {
+                    // Remove trailing newline
+                    while record.ends_with('\n') || record.ends_with('\r') {
+                        record.pop();
+                    }
+                    self.nr += 1;
+                    self.fnr += 1;
+                    self.set_record(&record);
+                    self.process_current_record(output)?;
+                    
+                    record.clear();
+                    in_record = false;
+
+                    if self.should_nextfile || self.should_exit {
+                        break;
+                    }
+                }
+            } else {
+                // Non-blank line - add to record
+                if in_record {
+                    record.push('\n');
+                }
+                // Remove trailing newline from line before adding
+                if line.ends_with('\n') {
+                    line.pop();
+                    if line.ends_with('\r') {
+                        line.pop();
+                    }
+                }
+                record.push_str(&line);
+                in_record = true;
+            }
+        }
+
+        if self.should_nextfile {
+            self.should_nextfile = false;
+        }
+
+        Ok(())
+    }
+
+    /// Process the current record through all matching rules
+    fn process_current_record<W: Write>(&mut self, output: &mut W) -> Result<()> {
+        for (idx, rule) in self.program.rules.iter().enumerate() {
+            // Skip special patterns that are handled separately
+            if matches!(&rule.pattern, 
+                Some(Pattern::Begin) | Some(Pattern::End) |
+                Some(Pattern::BeginFile) | Some(Pattern::EndFile)) {
+                continue;
+            }
+
+            let matches = self.pattern_matches(&rule.pattern, idx)?;
+            if matches {
+                if let Some(action) = &rule.action {
+                    self.execute_block(action, output)?;
+                } else {
+                    // Default action is to print $0
+                    writeln!(output, "{}", self.record).map_err(Error::Io)?;
+                }
+            }
+
+            if self.should_next {
+                self.should_next = false;
+                break;
+            }
+
+            if self.should_nextfile || self.should_exit {
+                break;
+            }
+        }
         Ok(())
     }
 
@@ -384,7 +505,8 @@ impl<'a> Interpreter<'a> {
     fn pattern_matches(&mut self, pattern: &Option<Pattern>, rule_idx: usize) -> Result<bool> {
         match pattern {
             None => Ok(true), // No pattern means always match
-            Some(Pattern::Begin) | Some(Pattern::End) => Ok(false),
+            Some(Pattern::Begin) | Some(Pattern::End) |
+            Some(Pattern::BeginFile) | Some(Pattern::EndFile) => Ok(false),
             Some(Pattern::Expr(expr)) => {
                 let val = self.eval_expr(expr)?;
                 Ok(val.is_truthy())
@@ -497,7 +619,14 @@ impl<'a> Interpreter<'a> {
         }
     }
 
+    /// Resolve array name through aliases (for pass-by-reference in functions)
+    fn resolve_array_name<'b>(&'b self, array: &'b str) -> &'b str {
+        self.array_aliases.get(array).map(|s| s.as_str()).unwrap_or(array)
+    }
+
     pub(crate) fn get_array_element(&self, array: &str, key: &str) -> Value {
+        let array = self.resolve_array_name(array);
+        
         // Check for special arrays first
         if let Some(val) = self.get_special_array(array, key) {
             return val;
@@ -511,13 +640,16 @@ impl<'a> Interpreter<'a> {
     }
 
     pub(crate) fn set_array_element(&mut self, array: &str, key: &str, value: Value) {
+        let array = self.resolve_array_name(array).to_string();
         self.arrays
-            .entry(array.to_string())
+            .entry(array)
             .or_default()
             .insert(key.to_string(), value);
     }
 
     pub(crate) fn array_key_exists(&self, array: &str, key: &str) -> bool {
+        let array = self.resolve_array_name(array);
+        
         // Check special arrays
         match array {
             "ARGV" => {
@@ -536,7 +668,8 @@ impl<'a> Interpreter<'a> {
     }
 
     pub(crate) fn delete_array_element(&mut self, array: &str, key: &str) {
-        if let Some(arr) = self.arrays.get_mut(array) {
+        let array = self.resolve_array_name(array).to_string();
+        if let Some(arr) = self.arrays.get_mut(&array) {
             arr.remove(key);
         }
     }

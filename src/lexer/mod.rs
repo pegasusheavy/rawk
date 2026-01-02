@@ -326,19 +326,41 @@ impl<'a> Lexer<'a> {
                 Some((_, '"')) => break,
                 Some((_, '\\')) => {
                     // Escape sequence
-                    match self.advance() {
-                        Some((_, 'n')) => value.push('\n'),
-                        Some((_, 't')) => value.push('\t'),
-                        Some((_, 'r')) => value.push('\r'),
-                        Some((_, 'b')) => value.push('\x08'),
-                        Some((_, 'f')) => value.push('\x0C'),
-                        Some((_, 'a')) => value.push('\x07'),
-                        Some((_, 'v')) => value.push('\x0B'),
-                        Some((_, '\\')) => value.push('\\'),
-                        Some((_, '"')) => value.push('"'),
-                        Some((_, '/')) => value.push('/'),
+                    match self.peek_char() {
+                        Some((_, 'n')) => { self.advance(); value.push('\n'); }
+                        Some((_, 't')) => { self.advance(); value.push('\t'); }
+                        Some((_, 'r')) => { self.advance(); value.push('\r'); }
+                        Some((_, 'b')) => { self.advance(); value.push('\x08'); }
+                        Some((_, 'f')) => { self.advance(); value.push('\x0C'); }
+                        Some((_, 'a')) => { self.advance(); value.push('\x07'); }
+                        Some((_, 'v')) => { self.advance(); value.push('\x0B'); }
+                        Some((_, '\\')) => { self.advance(); value.push('\\'); }
+                        Some((_, '"')) => { self.advance(); value.push('"'); }
+                        Some((_, '/')) => { self.advance(); value.push('/'); }
+                        Some((_, 'x')) => {
+                            // Hex escape: \xNN
+                            self.advance(); // consume 'x'
+                            let hex = self.read_hex_digits(2);
+                            if let Some(ch) = u8::from_str_radix(&hex, 16).ok().map(|b| b as char) {
+                                value.push(ch);
+                            } else {
+                                value.push_str("\\x");
+                                value.push_str(&hex);
+                            }
+                        }
+                        Some((_, c)) if c.is_ascii_digit() && c != '8' && c != '9' => {
+                            // Octal escape: \NNN (1-3 octal digits)
+                            let octal = self.read_octal_digits(3);
+                            if let Some(ch) = u8::from_str_radix(&octal, 8).ok().map(|b| b as char) {
+                                value.push(ch);
+                            } else {
+                                value.push('\\');
+                                value.push_str(&octal);
+                            }
+                        }
                         Some((_, c)) => {
                             // Unknown escape, just use the character
+                            self.advance();
                             value.push(c);
                         }
                         None => {
@@ -357,6 +379,34 @@ impl<'a> Lexer<'a> {
         }
 
         Ok(Token::new(TokenKind::String(value), line, col))
+    }
+
+    fn read_hex_digits(&mut self, max_count: usize) -> String {
+        let mut result = String::new();
+        for _ in 0..max_count {
+            match self.peek_char() {
+                Some((_, c)) if c.is_ascii_hexdigit() => {
+                    self.advance();
+                    result.push(c);
+                }
+                _ => break,
+            }
+        }
+        result
+    }
+
+    fn read_octal_digits(&mut self, max_count: usize) -> String {
+        let mut result = String::new();
+        for _ in 0..max_count {
+            match self.peek_char() {
+                Some((_, c)) if c >= '0' && c <= '7' => {
+                    self.advance();
+                    result.push(c);
+                }
+                _ => break,
+            }
+        }
+        result
     }
 
     fn scan_regex(&mut self) -> Result<Token> {

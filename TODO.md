@@ -1,38 +1,41 @@
 # RAWK - AWK Implementation in Rust
 
-A 100% POSIX-compatible AWK implementation in Rust, with support for GNU AWK (gawk) extensions.
+A 100% POSIX-compatible AWK implementation in Rust, with comprehensive GNU AWK (gawk) extension support.
 
 ---
 
 ## Implementation Status
 
-### ✅ COMPLETED
+### ✅ COMPLETED - Full POSIX Compliance
 
 #### Phase 1: Foundation & Core Infrastructure
 - [x] Error types and result handling (`src/error.rs`)
-- [x] CLI argument parsing with `-f`, `-F`, `-v` options
+- [x] CLI argument parsing with `-f`, `-F`, `-v`, `--` options
 - [x] Multiple input files and stdin handling
+- [x] FILENAME updates per input file
 - [x] Complete lexer with all token types
-- [x] String escape sequences
+- [x] String escape sequences (standard, hex `\xNN`, octal `\NNN`)
 - [x] Regex literals vs division disambiguation
 - [x] Line/column tracking for errors
 - [x] Line continuation with backslash
 - [x] Complete AST definition
 - [x] Recursive descent parser with correct operator precedence
 - [x] Print/printf argument lists
-- [x] getline variants (`getline`, `getline var`, `getline < file`)
+- [x] All getline variants (`getline`, `getline var`, `getline < file`, `cmd | getline`)
 
 #### Phase 2: Runtime & Interpreter
-- [x] Dynamic value system (String, Number, Uninitialized)
+- [x] Dynamic value system (String, Number, Uninitialized, NumericString)
 - [x] Automatic type coercion rules
 - [x] Numeric string semantics
 - [x] Symbol table for global variables
 - [x] Local function scope
 - [x] Associative arrays with multi-dimensional subscripts
+- [x] Array passing by reference to functions
 - [x] `in` operator for membership testing
 - [x] `delete` for array elements AND entire arrays
 - [x] All special variables: `$0`, `$1`..`$NF`, `NF`, `NR`, `FNR`, `FS`, `RS`, `OFS`, `ORS`, `FILENAME`, `ARGC`, `ARGV`, `ENVIRON`, `CONVFMT`, `OFMT`, `RSTART`, `RLENGTH`, `SUBSEP`
 - [x] Field splitting with `FS` (single char, space, regex)
+- [x] Paragraph mode (`RS = ""`)
 - [x] Field assignment and `$0` rebuilding
 - [x] `NF` modification
 - [x] All expression types
@@ -52,56 +55,52 @@ A 100% POSIX-compatible AWK implementation in Rust, with support for GNU AWK (ga
 - [x] Regex matching with `regex` crate (POSIX ERE)
 - [x] `&` replacement in `sub`/`gsub`
 - [x] Regex literals as function arguments
+- [x] Unicode/UTF-8 support for string functions
 
-#### Phase 5: Testing
-- [x] 195 tests total
-- [x] Unit tests for lexer, parser, interpreter, value system
-- [x] Comprehensive e2e tests (128 tests)
-- [x] gawk compatibility tests (34 tests)
+---
+
+### ✅ COMPLETED - GNU AWK Extensions
+
+#### Patterns
+- [x] `BEGINFILE` - execute before each input file
+- [x] `ENDFILE` - execute after each input file
+
+#### String Functions (gawk)
+- [x] `gensub(regexp, replacement, how [, target])` - general substitution
+- [x] `patsplit(string, array, fieldpat [, seps])` - split by pattern
+
+#### Array Functions (gawk)
+- [x] `asort(source [, dest])` - sort array by values
+- [x] `asorti(source [, dest])` - sort array by indices
+
+#### Time Functions (gawk)
+- [x] `systime()` - current time as seconds since epoch
+- [x] `mktime(datespec)` - convert date string to timestamp
+- [x] `strftime(format [, timestamp])` - format timestamp
 
 ---
 
 ### 🔄 REMAINING WORK
 
-#### High Priority (POSIX Compliance)
-- [ ] `cmd | getline` pipe syntax (parsing support needed)
-- [ ] Paragraph mode (`RS = ""`)
-- [ ] Hex/octal escape sequences in strings (`\xNN`, `\NNN`)
-- [ ] `getline` return value for main input
-
-#### Medium Priority
-- [ ] Multiple input file handling with FILENAME updates per file
-- [ ] Proper `--` separator handling
-- [ ] Array passing by reference to functions
-- [ ] Unicode/UTF-8 handling
-
-#### GNU AWK Extensions
-- [ ] `BEGINFILE`, `ENDFILE` patterns
-- [ ] `gensub()`, `patsplit()`, `asort()`, `asorti()`
-- [ ] `mktime()`, `strftime()`, `systime()`
-- [ ] `FPAT`, `FIELDWIDTHS`
+#### Future Enhancements (Lower Priority)
+- [ ] `FPAT` - field pattern for field splitting
+- [ ] `FIELDWIDTHS` - fixed-width field splitting
 - [ ] Two-way pipes (`|&`)
-- [ ] `@include`
-- [ ] Network I/O
+- [ ] `@include` directive
+- [ ] Network I/O (`/inet/tcp`, `/inet/udp`)
 - [ ] `PROCINFO` array
-
-#### Polish
-- [ ] Man page
-- [ ] `--posix` strict mode
-- [ ] `--traditional` mode
-- [ ] CI/CD pipeline
-- [ ] crates.io publishing
-- [ ] Binary releases
+- [ ] `--posix` strict mode flag
+- [ ] `--traditional` mode flag
 
 ---
 
 ## Test Coverage
 
 ```
-Unit Tests:      26 (lexer, parser, value system)
-E2E Tests:      128 (complete AWK programs)
-Compat Tests:    34 (gawk comparison)
-Total:          188 tests
+Unit Tests:       26 (lexer, parser, value system)
+E2E Tests:       165 (complete AWK programs)
+Compat Tests:     34 (gawk comparison)
+Total:           225 tests
 ```
 
 All tests pass with 100% success rate.
@@ -113,9 +112,26 @@ All tests pass with 100% success rate.
 The implementation includes:
 - Optimized field splitting (byte-based for single-char FS)
 - Compiled regex caching
-- `Cow<str>` for efficient string handling
+- Unicode-aware string operations
 - Release profile with LTO and single codegen unit
 - Criterion benchmarks for profiling
+
+---
+
+## CI/CD
+
+- GitHub Actions CI (Linux, macOS, Windows)
+- Automated releases with binary builds
+- Benchmark tracking
+- CodeQL security scanning
+- Dependency updates via Dependabot
+
+---
+
+## License
+
+Dual-licensed under MIT and Apache 2.0.
+Copyright (c) 2024 Pegasus Heavy Industries LLC.
 
 ---
 

@@ -112,6 +112,7 @@ fn run(args: &[String]) -> Result<i32, Box<dyn std::error::Error>> {
     // Prepare inputs
     let exit_code = if input_files.is_empty() {
         // Read from stdin
+        interpreter.set_filename("");
         let stdin = io::stdin();
         let inputs = vec![BufReader::new(stdin.lock())];
         interpreter.run(inputs, &mut output)?
@@ -119,6 +120,7 @@ fn run(args: &[String]) -> Result<i32, Box<dyn std::error::Error>> {
         // Read from files
         let mut exit_code = 0;
         for filename in &input_files {
+            interpreter.set_filename(filename);
             if filename == "-" {
                 let stdin = io::stdin();
                 let inputs = vec![BufReader::new(stdin.lock())];

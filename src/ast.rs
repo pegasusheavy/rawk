@@ -37,6 +37,10 @@ pub enum Pattern {
     Begin,
     /// END - runs after all input
     End,
+    /// BEGINFILE - runs at the start of each input file (gawk extension)
+    BeginFile,
+    /// ENDFILE - runs at the end of each input file (gawk extension)
+    EndFile,
     /// Expression that evaluates to true/false
     Expr(Expr),
     /// Regex pattern: /pattern/

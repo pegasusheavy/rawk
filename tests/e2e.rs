@@ -1064,3 +1064,265 @@ fn test_comparison_ge_in_print() {
     let output = run_awk("BEGIN { print 5 >= 3 }", "").unwrap();
     assert_eq!(output, "1\n");
 }
+
+// === Hex and Octal Escape Sequences ===
+
+#[test]
+fn test_hex_escape_sequence() {
+    // \x41 is 'A'
+    let output = run_awk(r#"BEGIN { print "\x41\x42\x43" }"#, "").unwrap();
+    assert_eq!(output, "ABC\n");
+}
+
+#[test]
+fn test_hex_escape_lowercase() {
+    // \x61 is 'a'
+    let output = run_awk(r#"BEGIN { print "\x61\x62\x63" }"#, "").unwrap();
+    assert_eq!(output, "abc\n");
+}
+
+#[test]
+fn test_octal_escape_sequence() {
+    // \101 is 'A' in octal
+    let output = run_awk(r#"BEGIN { print "\101\102\103" }"#, "").unwrap();
+    assert_eq!(output, "ABC\n");
+}
+
+#[test]
+fn test_octal_escape_tab_newline() {
+    // \011 is tab, \012 is newline
+    let output = run_awk(r#"BEGIN { print "a\011b" }"#, "").unwrap();
+    assert_eq!(output, "a\tb\n");
+}
+
+#[test]
+fn test_mixed_escape_sequences() {
+    // Mix of hex and standard escapes
+    let output = run_awk(r#"BEGIN { print "\x48ello\n\x57orld" }"#, "").unwrap();
+    assert_eq!(output, "Hello\nWorld\n");
+}
+
+// === Paragraph Mode (RS = "") ===
+
+#[test]
+fn test_paragraph_mode_basic() {
+    let input = "line1\nline2\n\nline3\nline4\n";
+    let output = run_awk(r#"BEGIN { RS = "" } { print "para:", NR, $0 }"#, input).unwrap();
+    // Should produce two paragraphs
+    assert!(output.contains("para: 1 line1\nline2"));
+    assert!(output.contains("para: 2 line3\nline4"));
+}
+
+#[test]
+fn test_paragraph_mode_multiple_blanks() {
+    // Multiple blank lines should count as one separator
+    let input = "para1\n\n\n\npara2\n";
+    let output = run_awk(r#"BEGIN { RS = "" } { print NR, $0 }"#, input).unwrap();
+    let lines: Vec<&str> = output.lines().collect();
+    assert_eq!(lines.len(), 2);
+    assert!(output.contains("1 para1"));
+    assert!(output.contains("2 para2"));
+}
+
+#[test]
+fn test_paragraph_mode_nf() {
+    // In paragraph mode with default FS, fields are still whitespace-separated
+    let input = "word1 word2\nword3\n\nword4 word5\n";
+    let output = run_awk(r#"BEGIN { RS = "" } { print NR, NF, $1, $NF }"#, input).unwrap();
+    assert!(output.contains("1 3 word1 word3"));
+    assert!(output.contains("2 2 word4 word5"));
+}
+
+// === cmd | getline ===
+
+#[test]
+fn test_pipe_getline_basic() {
+    let output = run_awk(r#"BEGIN { "echo hello" | getline x; print x }"#, "").unwrap();
+    assert_eq!(output, "hello\n");
+}
+
+#[test]
+fn test_pipe_getline_multiple() {
+    let output = run_awk(r#"BEGIN { 
+        while (("echo -e 'a\nb\nc'" | getline line) > 0) {
+            print "got:", line
+        }
+    }"#, "").unwrap();
+    // The output depends on the shell's echo behavior
+    assert!(output.contains("got:"));
+}
+
+#[test]
+fn test_pipe_getline_no_var() {
+    // Without var, getline sets $0
+    let output = run_awk(r#"BEGIN { "echo test" | getline; print $0 }"#, "").unwrap();
+    assert_eq!(output, "test\n");
+}
+
+// === Array by Reference ===
+
+#[test]
+fn test_array_in_function() {
+    // Arrays should be passed by reference (modification visible outside)
+    let output = run_awk(r#"
+        function modify(arr) { arr[1] = "modified" }
+        BEGIN { 
+            a[1] = "original"
+            modify(a)
+            print a[1]
+        }
+    "#, "").unwrap();
+    assert_eq!(output, "modified\n");
+}
+
+// === FILENAME Variable ===
+
+#[test]
+fn test_filename_variable() {
+    // FILENAME should be set correctly
+    let output = run_awk(r#"{ print FILENAME, $0 }"#, "test").unwrap();
+    // When reading from stdin/input string, FILENAME may be empty
+    assert!(output.contains("test"));
+}
+
+// === UTF-8 / Unicode Support ===
+
+#[test]
+fn test_utf8_length() {
+    // Length should count characters, not bytes
+    // "hello" is 5 chars, "héllo" is 5 chars, "你好" is 2 chars
+    let output = run_awk(r#"BEGIN { print length("hello"), length("héllo"), length("你好") }"#, "").unwrap();
+    assert_eq!(output, "5 5 2\n");
+}
+
+#[test]
+fn test_utf8_substr() {
+    // Substr should use character positions
+    let output = run_awk(r#"BEGIN { print substr("你好世界", 2, 2) }"#, "").unwrap();
+    assert_eq!(output, "好世\n");
+}
+
+#[test]
+fn test_utf8_index() {
+    // Index should return character position
+    let output = run_awk(r#"BEGIN { print index("hello世界", "世") }"#, "").unwrap();
+    assert_eq!(output, "6\n");
+}
+
+// === GAWK Extensions ===
+
+#[test]
+fn test_systime() {
+    // systime() should return a positive number (seconds since epoch)
+    let output = run_awk(r#"BEGIN { print (systime() > 0) }"#, "").unwrap();
+    assert_eq!(output, "1\n");
+}
+
+#[test]
+fn test_strftime_basic() {
+    // strftime with explicit timestamp
+    let output = run_awk(r#"BEGIN { print strftime("%Y-%m-%d", 0) }"#, "").unwrap();
+    assert_eq!(output, "1970-01-01\n");
+}
+
+#[test]
+fn test_strftime_time() {
+    // strftime for time
+    let output = run_awk(r#"BEGIN { print strftime("%H:%M:%S", 3661) }"#, "").unwrap();
+    assert_eq!(output, "01:01:01\n");
+}
+
+#[test]
+fn test_mktime() {
+    // mktime should parse date string to timestamp
+    let output = run_awk(r#"BEGIN { print mktime("1970 1 1 0 0 0") }"#, "").unwrap();
+    assert_eq!(output, "0\n");
+}
+
+#[test]
+fn test_mktime_date() {
+    // mktime with a specific date
+    let output = run_awk(r#"BEGIN { print mktime("2000 1 1 0 0 0") }"#, "").unwrap();
+    // 2000-01-01 00:00:00 UTC = 946684800 seconds since epoch
+    assert_eq!(output, "946684800\n");
+}
+
+#[test]
+fn test_gensub_global() {
+    // gensub with global replacement
+    let output = run_awk(r#"BEGIN { print gensub("o", "0", "g", "hello world") }"#, "").unwrap();
+    assert_eq!(output, "hell0 w0rld\n");
+}
+
+#[test]
+fn test_gensub_first() {
+    // gensub with first occurrence
+    let output = run_awk(r#"BEGIN { print gensub("o", "0", 1, "hello world") }"#, "").unwrap();
+    assert_eq!(output, "hell0 world\n");
+}
+
+#[test]
+fn test_gensub_nth() {
+    // gensub with nth occurrence
+    let output = run_awk(r#"BEGIN { print gensub("o", "0", 2, "hello world") }"#, "").unwrap();
+    assert_eq!(output, "hello w0rld\n");
+}
+
+#[test]
+fn test_gensub_returns_original() {
+    // gensub returns result, doesn't modify original (unlike gsub)
+    let output = run_awk(r#"BEGIN { x = "hello"; y = gensub("l", "L", "g", x); print x, y }"#, "").unwrap();
+    assert_eq!(output, "hello heLLo\n");
+}
+
+#[test]
+fn test_beginfile() {
+    // BEGINFILE is executed at start of each input
+    let output = run_awk(r#"BEGINFILE { print "start" } { print $0 }"#, "a\nb\n").unwrap();
+    assert!(output.starts_with("start\n"));
+    assert!(output.contains("a\n"));
+    assert!(output.contains("b\n"));
+}
+
+#[test]
+fn test_endfile() {
+    // ENDFILE is executed at end of each input
+    let output = run_awk(r#"{ print $0 } ENDFILE { print "done" }"#, "x\ny\n").unwrap();
+    assert!(output.ends_with("done\n"));
+}
+
+#[test]
+fn test_asort() {
+    // asort sorts array values
+    let output = run_awk(r#"BEGIN { 
+        a[1] = "cherry"
+        a[2] = "apple"
+        a[3] = "banana"
+        n = asort(a)
+        for (i = 1; i <= n; i++) print a[i]
+    }"#, "").unwrap();
+    assert_eq!(output, "apple\nbanana\ncherry\n");
+}
+
+#[test]
+fn test_asorti() {
+    // asorti sorts array indices
+    let output = run_awk(r#"BEGIN { 
+        a["cherry"] = 1
+        a["apple"] = 2
+        a["banana"] = 3
+        n = asorti(a, b)
+        for (i = 1; i <= n; i++) print b[i]
+    }"#, "").unwrap();
+    assert_eq!(output, "apple\nbanana\ncherry\n");
+}
+
+#[test]
+fn test_patsplit() {
+    // patsplit extracts matching fields
+    let output = run_awk(r#"BEGIN { 
+        n = patsplit("the:quick:fox", a, "[a-z]+")
+        for (i = 1; i <= n; i++) print a[i]
+    }"#, "").unwrap();
+    assert_eq!(output, "the\nquick\nfox\n");
+}

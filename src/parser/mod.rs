@@ -64,7 +64,7 @@ impl Parser {
     fn parse_rule(&mut self) -> Result<Rule> {
         let location = self.current_location();
 
-        // Check for BEGIN/END
+        // Check for BEGIN/END/BEGINFILE/ENDFILE
         if self.check(&TokenKind::Begin) {
             self.advance();
             self.skip_newlines();
@@ -82,6 +82,28 @@ impl Parser {
             let action = Some(self.parse_block()?);
             return Ok(Rule {
                 pattern: Some(Pattern::End),
+                action,
+                location,
+            });
+        }
+
+        if self.check(&TokenKind::BeginFile) {
+            self.advance();
+            self.skip_newlines();
+            let action = Some(self.parse_block()?);
+            return Ok(Rule {
+                pattern: Some(Pattern::BeginFile),
+                action,
+                location,
+            });
+        }
+
+        if self.check(&TokenKind::EndFile) {
+            self.advance();
+            self.skip_newlines();
+            let action = Some(self.parse_block()?);
+            return Ok(Rule {
+                pattern: Some(Pattern::EndFile),
                 action,
                 location,
             });
@@ -687,7 +709,7 @@ impl Parser {
     }
 
     fn parse_in(&mut self) -> Result<Expr> {
-        let expr = self.parse_match()?;
+        let expr = self.parse_pipe_getline()?;
 
         // Check for "in" (array membership)
         // Format: (expr) in array or expr in array
@@ -699,6 +721,43 @@ impl Parser {
                 array,
                 location,
             });
+        }
+
+        Ok(expr)
+    }
+
+    /// Handle `cmd | getline [var]` syntax
+    fn parse_pipe_getline(&mut self) -> Result<Expr> {
+        let expr = self.parse_match()?;
+
+        // Check for pipe to getline: expr | getline [var]
+        if self.check(&TokenKind::Pipe) {
+            // Look ahead to see if getline follows
+            let saved_pos = self.current;
+            self.advance(); // consume |
+            
+            if self.check(&TokenKind::Getline) {
+                let location = self.current_location();
+                self.advance(); // consume getline
+                
+                // Optional variable name
+                let var = if let Some(TokenKind::Identifier(name)) = self.peek_kind() {
+                    let name = name.clone();
+                    self.advance();
+                    Some(name)
+                } else {
+                    None
+                };
+                
+                return Ok(Expr::Getline {
+                    var,
+                    input: Some(GetlineInput::Pipe(Box::new(expr))),
+                    location,
+                });
+            } else {
+                // Not getline, backtrack
+                self.current = saved_pos;
+            }
         }
 
         Ok(expr)

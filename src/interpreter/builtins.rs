@@ -20,6 +20,8 @@ impl<'a> Interpreter<'a> {
             "sub" | "gsub" => return self.call_regex_sub(name, args, location),
             "match" => return self.call_match(args, location),
             "split" => return self.call_split(args, location),
+            "patsplit" => return self.call_patsplit(args, location),
+            "asort" | "asorti" => return self.call_asort(name == "asorti", args, location),
             "getline" => return self.call_getline(args, location),
             "close" => return self.call_close(args, location),
             "fflush" => return self.call_fflush(args, location, output),
@@ -37,7 +39,16 @@ impl<'a> Interpreter<'a> {
 
         // Check for user-defined functions
         if let Some(func) = self.functions.get(name).cloned() {
-            return self.call_user_function(func, arg_values, output);
+            // Extract array names from arguments for pass-by-reference
+            let array_refs: Vec<Option<String>> = args.iter().map(|e| {
+                if let Expr::Var(name, _) = e {
+                    if self.arrays.contains_key(name) {
+                        return Some(name.clone());
+                    }
+                }
+                None
+            }).collect();
+            return self.call_user_function(&func, arg_values, array_refs, output);
         }
 
         Err(Error::runtime_at(
@@ -180,6 +191,136 @@ impl<'a> Interpreter<'a> {
         Ok(Value::Number(parts.len() as f64))
     }
 
+    /// asort(source [, dest]) - sort array values
+    /// asorti(source [, dest]) - sort array indices
+    fn call_asort(&mut self, sort_indices: bool, args: &[Expr], location: SourceLocation) -> Result<Value> {
+        // Get source array name
+        let source_name = match args.first() {
+            Some(Expr::Var(name, _)) => name.clone(),
+            _ => {
+                return Err(Error::runtime_at(
+                    if sort_indices { "asorti: first argument must be an array" }
+                    else { "asort: first argument must be an array" },
+                    location.line,
+                    location.column,
+                ));
+            }
+        };
+
+        // Get optional destination array name
+        let dest_name = match args.get(1) {
+            Some(Expr::Var(name, _)) => Some(name.clone()),
+            None => None,
+            _ => {
+                return Err(Error::runtime_at(
+                    if sort_indices { "asorti: second argument must be an array" }
+                    else { "asort: second argument must be an array" },
+                    location.line,
+                    location.column,
+                ));
+            }
+        };
+
+        // Get values to sort
+        let items: Vec<String> = if let Some(arr) = self.arrays.get(&source_name) {
+            if sort_indices {
+                arr.keys().cloned().collect()
+            } else {
+                arr.values().map(|v| v.to_string_val()).collect()
+            }
+        } else {
+            Vec::new()
+        };
+
+        let mut sorted = items;
+        sorted.sort();
+
+        let count = sorted.len();
+
+        // Store in destination (or source if no dest)
+        let target = dest_name.unwrap_or_else(|| source_name.clone());
+        self.arrays.remove(&target);
+        
+        for (i, item) in sorted.iter().enumerate() {
+            let key = (i + 1).to_string();
+            self.set_array_element(&target, &key, Value::from_string(item.clone()));
+        }
+
+        Ok(Value::Number(count as f64))
+    }
+
+    /// patsplit(string, array, fieldpat [, seps]) - split by pattern matches
+    fn call_patsplit(&mut self, args: &[Expr], location: SourceLocation) -> Result<Value> {
+        // Get string to split
+        let s = args.first()
+            .map(|e| self.eval_expr(e))
+            .transpose()?
+            .map(|v| v.to_string_val())
+            .unwrap_or_default();
+
+        // Get array name
+        let array_name = match args.get(1) {
+            Some(Expr::Var(name, _)) => name.clone(),
+            _ => {
+                return Err(Error::runtime_at(
+                    "patsplit: second argument must be an array",
+                    location.line,
+                    location.column,
+                ));
+            }
+        };
+
+        // Get field pattern
+        let fieldpat = if let Some(pat_expr) = args.get(2) {
+            self.extract_pattern(pat_expr)?
+        } else {
+            return Err(Error::runtime_at(
+                "patsplit: missing fieldpat argument",
+                location.line,
+                location.column,
+            ));
+        };
+
+        // Optional separator array
+        let seps_name = match args.get(3) {
+            Some(Expr::Var(name, _)) => Some(name.clone()),
+            None => None,
+            _ => None,
+        };
+
+        // Clear destination arrays
+        self.arrays.remove(&array_name);
+        if let Some(ref name) = seps_name {
+            self.arrays.remove(name);
+        }
+
+        // Compile regex and find all matches
+        let re = self.get_regex(&fieldpat)?;
+        let matches: Vec<regex::Match> = re.find_iter(&s).collect();
+
+        // Store matches in array
+        for (i, mat) in matches.iter().enumerate() {
+            let key = (i + 1).to_string();
+            self.set_array_element(&array_name, &key, Value::from_string(mat.as_str().to_string()));
+        }
+
+        // Store separators if requested
+        if let Some(ref name) = seps_name {
+            let mut last_end = 0;
+            for (i, mat) in matches.iter().enumerate() {
+                let sep = &s[last_end..mat.start()];
+                let key = i.to_string();
+                self.set_array_element(name, &key, Value::from_string(sep.to_string()));
+                last_end = mat.end();
+            }
+            // Final separator after last match
+            let key = matches.len().to_string();
+            self.set_array_element(name, &key, Value::from_string(s[last_end..].to_string()));
+        }
+
+        Ok(Value::Number(matches.len() as f64))
+    }
+
     /// Call getline with file/pipe/variable handling
     fn call_getline(&mut self, args: &[Expr], location: SourceLocation) -> Result<Value> {
         // getline returns: 1 (success), 0 (EOF), -1 (error)
@@ -239,7 +380,8 @@ impl<'a> Interpreter<'a> {
             // String functions
             "length" => {
                 let s = args.first().map(|v| v.to_string_val()).unwrap_or_else(|| self.record.clone());
-                Ok(Some(Value::Number(s.len() as f64)))
+                // Use character count for UTF-8 support
+                Ok(Some(Value::Number(s.chars().count() as f64)))
             }
 
             "substr" => {
@@ -247,8 +389,8 @@ impl<'a> Interpreter<'a> {
                 let start = args.get(1).map(|v| v.to_number() as usize).unwrap_or(1);
                 let len = args.get(2).map(|v| v.to_number() as usize);
 
-                // AWK uses 1-based indexing
-                let start = start.saturating_sub(1).min(s.len());
+                // AWK uses 1-based indexing; ensure start is at least 1
+                let start = start.max(1).saturating_sub(1);
                 let result = if let Some(len) = len {
                     s.chars().skip(start).take(len).collect()
                 } else {
@@ -260,7 +402,11 @@ impl<'a> Interpreter<'a> {
             "index" => {
                 let s = args.first().map(|v| v.to_string_val()).unwrap_or_default();
                 let target = args.get(1).map(|v| v.to_string_val()).unwrap_or_default();
-                let pos = s.find(&target).map(|i| i + 1).unwrap_or(0);
+                // Find byte position, then convert to character position
+                let pos = s.find(&target).map(|byte_idx| {
+                    // Count characters before the byte index
+                    s[..byte_idx].chars().count() + 1
+                }).unwrap_or(0);
                 Ok(Some(Value::Number(pos as f64)))
             }
 
@@ -351,6 +497,101 @@ impl<'a> Interpreter<'a> {
                 Ok(Some(Value::Number(status as f64)))
             }
 
+            // === GAWK Extensions ===
+            
+            // Time functions
+            "systime" => {
+                // Return current time as seconds since epoch
+                use std::time::{SystemTime, UNIX_EPOCH};
+                let secs = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                Ok(Some(Value::Number(secs as f64)))
+            }
+
+            "mktime" => {
+                // Parse "YYYY MM DD HH MM SS [DST]" into epoch timestamp
+                let datespec = args.first().map(|v| v.to_string_val()).unwrap_or_default();
+                let parts: Vec<i64> = datespec.split_whitespace()
+                    .filter_map(|s| s.parse().ok())
+                    .collect();
+                
+                if parts.len() >= 6 {
+                    // Simple implementation using chrono-like calculation
+                    // This is a simplified version; for full accuracy we'd need chrono crate
+                    let year = parts[0];
+                    let month = parts[1];
+                    let day = parts[2];
+                    let hour = parts[3];
+                    let min = parts[4];
+                    let sec = parts[5];
+                    
+                    // Simplified epoch calculation (not handling DST or timezones)
+                    let epoch = simple_mktime(year, month, day, hour, min, sec);
+                    Ok(Some(Value::Number(epoch as f64)))
+                } else {
+                    Ok(Some(Value::Number(-1.0)))
+                }
+            }
+
+            "strftime" => {
+                // Format timestamp
+                let format = args.first().map(|v| v.to_string_val()).unwrap_or_else(|| "%a %b %e %H:%M:%S %Z %Y".to_string());
+                use std::time::{SystemTime, UNIX_EPOCH};
+                let timestamp = args.get(1)
+                    .map(|v| v.to_number() as u64)
+                    .unwrap_or_else(|| {
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .map(|d| d.as_secs())
+                            .unwrap_or(0)
+                    });
+                
+                let result = format_strftime(&format, timestamp);
+                Ok(Some(Value::from_string(result)))
+            }
+
+            // gensub - like gsub but returns the result instead of modifying in place
+            "gensub" => {
+                let pattern = args.first().map(|v| v.to_string_val()).unwrap_or_default();
+                let replacement = args.get(1).map(|v| v.to_string_val()).unwrap_or_default();
+                let how = args.get(2).map(|v| v.to_string_val()).unwrap_or_else(|| "g".to_string());
+                let target = args.get(3).map(|v| v.to_string_val()).unwrap_or_else(|| self.record.clone());
+                
+                let re = self.get_regex(&pattern)?;
+                
+                // "g" or "G" means global, otherwise it's the occurrence number
+                let result = if how.eq_ignore_ascii_case("g") {
+                    re.replace_all(&target, replacement.replace("&", "$0").as_str()).to_string()
+                } else if let Ok(n) = how.parse::<usize>() {
+                    // Replace nth occurrence
+                    let mut count = 0;
+                    let mut last_end = 0;
+                    let mut result = String::new();
+                    for mat in re.find_iter(&target) {
+                        count += 1;
+                        if count == n {
+                            result.push_str(&target[last_end..mat.start()]);
+                            result.push_str(&replacement.replace("&", mat.as_str()));
+                            last_end = mat.end();
+                            break;
+                        }
+                    }
+                    result.push_str(&target[last_end..]);
+                    if count < n {
+                        target.clone()
+                    } else {
+                        result
+                    }
+                } else {
+                    // Default to first occurrence
+                    re.replace(&target, replacement.replace("&", "$0").as_str()).to_string()
+                };
+                
+                Ok(Some(Value::from_string(result)))
+            }
+
             _ => Ok(None), // Not a built-in
         }
     }
@@ -359,6 +600,7 @@ impl<'a> Interpreter<'a> {
         &mut self,
         func: &crate::ast::FunctionDef,
         args: Vec<Value>,
+        array_refs: Vec<Option<String>>,
         output: &mut W,
     ) -> Result<Value> {
         // Save current variables for local scope
@@ -366,8 +608,32 @@ impl<'a> Interpreter<'a> {
             .filter_map(|name| self.variables.get(name).map(|v| (name.clone(), v.clone())))
             .collect();
 
-        // Set parameters
+        // Save any arrays that share names with parameters (for local arrays)
+        let saved_arrays: std::collections::HashMap<String, std::collections::HashMap<String, Value>> = 
+            func.params.iter()
+            .filter_map(|name| self.arrays.get(name).map(|a| (name.clone(), a.clone())))
+            .collect();
+
+        // Create array aliases for pass-by-reference
+        // If an argument is an array reference, the parameter name should point to the same array
+        let mut array_aliases: std::collections::HashMap<String, String> = std::collections::HashMap::new();
         for (i, param) in func.params.iter().enumerate() {
+            if let Some(Some(array_name)) = array_refs.get(i) {
+                // This parameter is an array reference
+                // Create an alias: when we access param, we should access array_name
+                if param != array_name {
+                    array_aliases.insert(param.clone(), array_name.clone());
+                }
+            }
+        }
+        self.array_aliases = array_aliases;
+
+        // Set scalar parameters
+        for (i, param) in func.params.iter().enumerate() {
+            // Skip if this is an array reference
+            if let Some(Some(_)) = array_refs.get(i) {
+                continue;
+            }
             let value = args.get(i).cloned().unwrap_or(Value::Uninitialized);
             self.set_variable_value(param, value);
         }
@@ -378,12 +644,27 @@ impl<'a> Interpreter<'a> {
             _ => Value::Uninitialized,
         };
 
+        // Clear array aliases
+        self.array_aliases.clear();
+
         // Restore saved variables and remove parameters that weren't saved
         for param in &func.params {
             if let Some(value) = saved_vars.get(param) {
                 self.set_variable_value(param, value.clone());
             } else {
                 self.variables.remove(param);
+            }
+        }
+
+        // Restore any saved arrays or remove local arrays
+        for param in &func.params {
+            if let Some(arr) = saved_arrays.get(param) {
+                self.arrays.insert(param.clone(), arr.clone());
+            } else if !array_refs.get(func.params.iter().position(|p| p == param).unwrap_or(usize::MAX))
+                .map(|r| r.is_some())
+                .unwrap_or(false) 
+            {
+                self.arrays.remove(param);
             }
         }
 
@@ -418,4 +699,148 @@ fn regex_sub_helper(re: &regex::Regex, replacement: &str, target: &str, global: 
         });
         (result.to_string(), count)
     }
+}
+
+/// Simplified mktime implementation (UTC-based)
+fn simple_mktime(year: i64, month: i64, day: i64, hour: i64, min: i64, sec: i64) -> i64 {
+    // Days in each month (non-leap year)
+    const DAYS_IN_MONTH: [i64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    
+    fn is_leap_year(year: i64) -> bool {
+        (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    }
+    
+    fn days_in_year(year: i64) -> i64 {
+        if is_leap_year(year) { 366 } else { 365 }
+    }
+    
+    // Calculate days from epoch (1970-01-01)
+    let mut days: i64 = 0;
+    
+    // Add days for complete years
+    for y in 1970..year {
+        days += days_in_year(y);
+    }
+    for y in year..1970 {
+        days -= days_in_year(y);
+    }
+    
+    // Add days for complete months in current year
+    for m in 1..month {
+        let m_idx = (m - 1) as usize;
+        if m_idx < 12 {
+            days += DAYS_IN_MONTH[m_idx];
+            if m == 2 && is_leap_year(year) {
+                days += 1;
+            }
+        }
+    }
+    
+    // Add remaining days
+    days += day - 1;
+    
+    // Convert to seconds
+    days * 86400 + hour * 3600 + min * 60 + sec
+}
+
+/// Simplified strftime implementation
+fn format_strftime(format: &str, timestamp: u64) -> String {
+    // Break down timestamp into components
+    let secs = timestamp as i64;
+    
+    // Calculate year, month, day, etc.
+    let (year, month, day, hour, min, sec, wday, yday) = breakdown_time(secs);
+    
+    let weekday_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    let month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    let weekday_full = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    let month_full = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    
+    let mut result = String::new();
+    let mut chars = format.chars().peekable();
+    
+    while let Some(ch) = chars.next() {
+        if ch == '%' {
+            match chars.next() {
+                Some('Y') => result.push_str(&format!("{:04}", year)),
+                Some('y') => result.push_str(&format!("{:02}", year % 100)),
+                Some('m') => result.push_str(&format!("{:02}", month)),
+                Some('d') => result.push_str(&format!("{:02}", day)),
+                Some('e') => result.push_str(&format!("{:2}", day)),
+                Some('H') => result.push_str(&format!("{:02}", hour)),
+                Some('M') => result.push_str(&format!("{:02}", min)),
+                Some('S') => result.push_str(&format!("{:02}", sec)),
+                Some('a') => result.push_str(weekday_names.get(wday as usize).unwrap_or(&"???")),
+                Some('A') => result.push_str(weekday_full.get(wday as usize).unwrap_or(&"???")),
+                Some('b') | Some('h') => result.push_str(month_names.get((month - 1) as usize).unwrap_or(&"???")),
+                Some('B') => result.push_str(month_full.get((month - 1) as usize).unwrap_or(&"???")),
+                Some('j') => result.push_str(&format!("{:03}", yday)),
+                Some('u') => result.push_str(&format!("{}", if wday == 0 { 7 } else { wday })),
+                Some('w') => result.push_str(&format!("{}", wday)),
+                Some('Z') => result.push_str("UTC"),
+                Some('z') => result.push_str("+0000"),
+                Some('%') => result.push('%'),
+                Some('n') => result.push('\n'),
+                Some('t') => result.push('\t'),
+                Some(c) => { result.push('%'); result.push(c); }
+                None => result.push('%'),
+            }
+        } else {
+            result.push(ch);
+        }
+    }
+    
+    result
+}
+
+/// Break down epoch seconds into date/time components
+fn breakdown_time(secs: i64) -> (i64, i64, i64, i64, i64, i64, i64, i64) {
+    const DAYS_IN_MONTH: [i64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    
+    fn is_leap_year(year: i64) -> bool {
+        (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    }
+    
+    let sec = secs % 60;
+    let min = (secs / 60) % 60;
+    let hour = (secs / 3600) % 24;
+    let mut days = secs / 86400;
+    
+    // wday: 0 = Sunday, 1970-01-01 was Thursday (4)
+    let wday = ((days + 4) % 7 + 7) % 7;
+    
+    // Calculate year
+    let mut year = 1970i64;
+    loop {
+        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        if days >= days_in_year {
+            days -= days_in_year;
+            year += 1;
+        } else if days < 0 {
+            year -= 1;
+            let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+            days += days_in_year;
+        } else {
+            break;
+        }
+    }
+    
+    let yday = days + 1; // 1-based day of year
+    
+    // Calculate month and day
+    let mut month = 1i64;
+    for m in 0..12 {
+        let mut dim = DAYS_IN_MONTH[m];
+        if m == 1 && is_leap_year(year) {
+            dim += 1;
+        }
+        if days < dim {
+            month = m as i64 + 1;
+            break;
+        }
+        days -= dim;
+    }
+    let day = days + 1;
+    
+    (year, month, day, hour, min, sec, wday, yday)
 }
