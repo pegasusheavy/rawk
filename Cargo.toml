@@ -1,0 +1,30 @@
+[package]
+name = "rawk"
+version = "0.1.0"
+edition = "2024"
+description = "A 100% POSIX-compatible AWK implementation in Rust"
+license = "MIT"
+repository = "https://github.com/PegasusHeavyIndustries/rawk"
+keywords = ["awk", "text-processing", "cli", "posix"]
+categories = ["command-line-utilities", "text-processing"]
+
+[dependencies]
+regex = "1"
+thiserror = "1"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+opt-level = 3
+
+[profile.bench]
+lto = true
+codegen-units = 1

@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: POSIX AWK Specification
+    url: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/awk.html
+    about: Reference the official POSIX AWK specification
+  - name: GNU AWK Manual
+    url: https://www.gnu.org/software/gawk/manual/
+    about: Reference the GNU AWK documentation for gawk extensions
+  - name: Discussions
+    url: https://github.com/PegasusHeavyIndustries/rawk/discussions
+    about: Ask questions and discuss rawk

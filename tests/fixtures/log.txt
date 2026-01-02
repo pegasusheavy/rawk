@@ -1,0 +1,9 @@
+2024-01-01 INFO Starting application
+2024-01-01 DEBUG Loading configuration
+2024-01-01 INFO Server listening on port 8080
+2024-01-01 ERROR Connection refused
+2024-01-01 WARN Retrying connection
+2024-01-01 INFO Connected successfully
+2024-01-01 DEBUG Processing request
+2024-01-01 ERROR Timeout waiting for response
+2024-01-01 INFO Shutting down
