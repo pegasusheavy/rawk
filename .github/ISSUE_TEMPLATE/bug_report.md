@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug or unexpected behavior in rawk
+about: Report a bug or unexpected behavior in awk-rs
 title: '[BUG] '
 labels: bug
 assignees: ''
@@ -40,12 +40,12 @@ data2
 What actually happened:
 
 ```
-# Actual output from rawk
+# Actual output from awk-rs
 ```
 
 ## Environment
 
-- **rawk version**: `rawk --version`
+- **awk-rs version**: `awk-rs --version`
 - **Operating System**: [e.g., Ubuntu 22.04, macOS 14, Windows 11]
 - **Rust version** (if building from source): `rustc --version`
 
@@ -56,5 +56,5 @@ Add any other context about the problem here.
 ## Checklist
 
 - [ ] I have searched existing issues to ensure this is not a duplicate
-- [ ] I have tested with the latest version of rawk
+- [ ] I have tested with the latest version of awk-rs
 - [ ] I have compared the behavior with gawk or another AWK implementation

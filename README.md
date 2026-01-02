@@ -1,8 +1,8 @@
-# rawk
+# awk-rs
 
-[![CI](https://github.com/pegasusheavy/rawk/actions/workflows/ci.yml/badge.svg)](https://github.com/pegasusheavy/rawk/actions/workflows/ci.yml)
-[![Crates.io](https://img.shields.io/crates/v/rawk.svg)](https://crates.io/crates/rawk)
-[![Documentation](https://docs.rs/rawk/badge.svg)](https://docs.rs/rawk)
+[![CI](https://github.com/pegasusheavy/awk-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/pegasusheavy/awk-rs/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/awk-rs.svg)](https://crates.io/crates/awk-rs)
+[![Documentation](https://docs.rs/awk-rs/badge.svg)](https://docs.rs/awk-rs)
 [![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 
@@ -10,7 +10,7 @@ A 100% POSIX-compatible AWK implementation in Rust with GNU AWK (gawk) extension
 
 ## Overview
 
-**rawk** aims to be a drop-in replacement for AWK that faithfully implements the POSIX AWK specification while also supporting common GNU AWK extensions. Written in Rust for reliability and performance.
+**awk-rs** aims to be a drop-in replacement for AWK that faithfully implements the POSIX AWK specification while also supporting common GNU AWK extensions. Written in Rust for reliability and performance.
 
 ### Goals
 
@@ -25,36 +25,36 @@ A 100% POSIX-compatible AWK implementation in Rust with GNU AWK (gawk) extension
 ### From Source
 
 ```bash
-git clone https://github.com/pegasusheavy/rawk.git
-cd rawk
+git clone https://github.com/pegasusheavy/awk-rs.git
+cd awk-rs
 cargo build --release
 ```
 
-The binary will be at `target/release/rawk`.
+The binary will be at `target/release/awk-rs`.
 
 ### From crates.io
 
 ```bash
-cargo install rawk
+cargo install awk-rs
 ```
 
 ## Usage
 
 ```bash
 # Run an AWK program directly
-rawk 'BEGIN { print "Hello, World!" }'
+awk-rs 'BEGIN { print "Hello, World!" }'
 
 # Process files
-rawk '{ print $1 }' file.txt
+awk-rs '{ print $1 }' file.txt
 
 # Set field separator
-rawk -F: '{ print $1 }' /etc/passwd
+awk-rs -F: '{ print $1 }' /etc/passwd
 
 # Set variables before execution
-rawk -v name="Alice" 'BEGIN { print "Hello, " name }'
+awk-rs -v name="Alice" 'BEGIN { print "Hello, " name }'
 
 # Run program from file
-rawk -f program.awk input.txt
+awk-rs -f program.awk input.txt
 ```
 
 ### Command-Line Options
@@ -73,37 +73,37 @@ rawk -f program.awk input.txt
 ### Print specific columns
 
 ```bash
-echo "one two three" | rawk '{ print $2 }'
+echo "one two three" | awk-rs '{ print $2 }'
 # Output: two
 ```
 
 ### Sum numbers in a file
 
 ```bash
-rawk '{ sum += $1 } END { print sum }' numbers.txt
+awk-rs '{ sum += $1 } END { print sum }' numbers.txt
 ```
 
 ### Filter lines with pattern
 
 ```bash
-rawk '/error/ { print }' logfile.txt
+awk-rs '/error/ { print }' logfile.txt
 ```
 
 ### Field separator and formatting
 
 ```bash
-rawk -F: '{ printf "User: %-20s Shell: %s\n", $1, $7 }' /etc/passwd
+awk-rs -F: '{ printf "User: %-20s Shell: %s\n", $1, $7 }' /etc/passwd
 ```
 
 ### Associative arrays
 
 ```bash
-rawk '{ count[$1]++ } END { for (word in count) print word, count[word] }' words.txt
+awk-rs '{ count[$1]++ } END { for (word in count) print word, count[word] }' words.txt
 ```
 
 ## Compatibility
 
-rawk aims for 100% compatibility with:
+awk-rs aims for 100% compatibility with:
 
 - **POSIX AWK** - The baseline specification
 - **gawk** - GNU AWK extensions
@@ -164,7 +164,7 @@ Copyright © 2026 Pegasus Heavy Industries LLC
 
 ## Testing
 
-rawk has comprehensive test coverage:
+awk-rs has comprehensive test coverage:
 
 ```bash
 cargo test          # Run all 639 tests

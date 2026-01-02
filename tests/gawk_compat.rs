@@ -1,11 +1,11 @@
-//! Compatibility tests that compare rawk output with gawk
+//! Compatibility tests that compare awk-rs output with gawk
 //!
 //! These tests are skipped if gawk is not available on the system.
 
 use std::io::{BufReader, Cursor};
 use std::process::Command;
 
-use rawk::{Interpreter, Lexer, Parser};
+use awk_rs::{Interpreter, Lexer, Parser};
 
 /// Check if gawk is available on the system
 fn gawk_available() -> bool {
@@ -16,8 +16,8 @@ fn gawk_available() -> bool {
         .unwrap_or(false)
 }
 
-/// Run a program with rawk and return output
-fn run_rawk(program: &str, input: &str) -> String {
+/// Run a program with awk-rs and return output
+fn run_awk_rs(program: &str, input: &str) -> String {
     let mut lexer = Lexer::new(program);
     let tokens = lexer.tokenize().unwrap();
     let mut parser = Parser::new(tokens);
@@ -64,20 +64,20 @@ fn run_gawk(program: &str, input: &str) -> Option<String> {
     }
 }
 
-/// Compare rawk and gawk output for a given program and input
+/// Compare awk-rs and gawk output for a given program and input
 fn compare_with_gawk(program: &str, input: &str) {
     if !gawk_available() {
         eprintln!("Skipping gawk comparison test (gawk not available)");
         return;
     }
 
-    let rawk_output = run_rawk(program, input);
+    let awk_rs_output = run_awk_rs(program, input);
     let gawk_output = run_gawk(program, input).expect("Failed to run gawk");
 
     assert_eq!(
-        rawk_output, gawk_output,
-        "Output mismatch for program: {}\nInput: {:?}\nrawk output: {:?}\ngawk output: {:?}",
-        program, input, rawk_output, gawk_output
+        awk_rs_output, gawk_output,
+        "Output mismatch for program: {}\nInput: {:?}\nawk-rs output: {:?}\ngawk output: {:?}",
+        program, input, awk_rs_output, gawk_output
     );
 }
 
@@ -278,11 +278,11 @@ fn compat_word_frequency() {
         "{ for (i=1; i<=NF; i++) count[$i]++ } END { for (w in count) print w, count[w] }";
     let input = "a b a c b a";
 
-    let rawk_output = run_rawk(program, input);
+    let awk_rs_output = run_awk_rs(program, input);
     let gawk_output = run_gawk(program, input).unwrap();
 
     // Both should have 3 lines
-    assert_eq!(rawk_output.lines().count(), gawk_output.lines().count());
+    assert_eq!(awk_rs_output.lines().count(), gawk_output.lines().count());
 }
 
 #[test]

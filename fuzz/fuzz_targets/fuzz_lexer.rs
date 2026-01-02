@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use rawk::Lexer;
+use awk_rs::Lexer;
 
 fuzz_target!(|data: &str| {
     // Fuzz the lexer with arbitrary input strings

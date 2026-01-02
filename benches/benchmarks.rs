@@ -1,7 +1,7 @@
 use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use std::io::{BufReader, Cursor};
 
-use rawk::{Interpreter, Lexer, Parser};
+use awk_rs::{Interpreter, Lexer, Parser};
 
 fn run_awk(program: &str, input: &str) -> String {
     let mut lexer = Lexer::new(program);

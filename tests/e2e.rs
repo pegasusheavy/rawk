@@ -1,10 +1,10 @@
-//! End-to-end tests for rawk
+//! End-to-end tests for awk-rs
 //!
 //! These tests run complete AWK programs and verify the output matches expected results.
 
 use std::io::{BufReader, Cursor};
 
-use rawk::{Interpreter, Lexer, Parser};
+use awk_rs::{Interpreter, Lexer, Parser};
 
 /// Run an AWK program with the given input and return the output
 fn run_awk(program: &str, input: &str) -> Result<String, String> {
@@ -1056,7 +1056,7 @@ fn test_argc_zero() {
 }
 
 // ============================================================================
-// OUTPUT REDIRECTION TESTS (run via run_rawk_binary, not library)
+// OUTPUT REDIRECTION TESTS (run via run_awk_rs_binary, not library)
 // These tests verify the parser handles > properly for redirection
 // ============================================================================
 
@@ -1452,7 +1452,7 @@ fn test_fieldwidths_short_record() {
 
 #[test]
 fn test_procinfo_version() {
-    // PROCINFO["version"] should return the rawk version
+    // PROCINFO["version"] should return the awk-rs version
     let output = run_awk(r#"BEGIN { print (PROCINFO["version"] != "") }"#, "").unwrap();
     assert_eq!(output, "1\n");
 }
@@ -2337,7 +2337,7 @@ fn test_srand_returns_prev() {
 #[test]
 fn test_close_success() {
     let output = run_awk(
-        r#"BEGIN { print "test" > "/tmp/rawk_test_close"; print close("/tmp/rawk_test_close") }"#,
+        r#"BEGIN { print "test" > "/tmp/awk_rs_test_close"; print close("/tmp/awk_rs_test_close") }"#,
         "",
     )
     .unwrap();
@@ -2673,8 +2673,8 @@ fn test_split_whitespace_default() {
 fn test_close_file_success() {
     let output = run_awk(
         r#"BEGIN {
-        print "test" > "/tmp/rawk_close_test"
-        ret = close("/tmp/rawk_close_test")
+        print "test" > "/tmp/awk_rs_close_test"
+        ret = close("/tmp/awk_rs_close_test")
         print ret
     }"#,
         "",
@@ -2904,8 +2904,8 @@ fn test_expr_statement() {
 fn test_print_to_multiple_files() {
     let output = run_awk(
         r#"BEGIN {
-        print "a" > "/tmp/rawk_test_a"
-        print "b" > "/tmp/rawk_test_b"
+        print "a" > "/tmp/awk_rs_test_a"
+        print "b" > "/tmp/awk_rs_test_b"
         print "done"
     }"#,
         "",

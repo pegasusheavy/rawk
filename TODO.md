@@ -1,10 +1,10 @@
-# RAWK - AWK Implementation in Rust
+# awk-rs - AWK Implementation in Rust
 
 A 100% POSIX-compatible AWK implementation in Rust, with comprehensive GNU AWK (gawk) extension support.
 
 ## 🎉 Version 0.1.0 Released
 
-**RAWK is now 100% POSIX AWK compliant** with comprehensive GNU AWK extension support. All core AWK functionality is implemented and tested.
+**awk-rs is now 100% POSIX AWK compliant** with comprehensive GNU AWK extension support. All core AWK functionality is implemented and tested.
 
 | Category | Status |
 |----------|--------|

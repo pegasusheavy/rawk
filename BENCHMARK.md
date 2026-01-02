@@ -1,6 +1,6 @@
-# RAWK Benchmarks
+# awk-rs Benchmarks
 
-This document describes the benchmarking infrastructure and performance characteristics of rawk.
+This document describes the benchmarking infrastructure and performance characteristics of awk-rs.
 
 ## Running Benchmarks
 
@@ -136,11 +136,11 @@ Measures individual built-in function performance.
 cargo build --release
 
 # Profile a specific workload
-perf record ./target/release/rawk 'your program' input.txt
+perf record ./target/release/awk-rs 'your program' input.txt
 perf report
 
 # Flame graph
-perf record -g ./target/release/rawk 'program' input.txt
+perf record -g ./target/release/awk-rs 'program' input.txt
 perf script | stackcollapse-perf.pl | flamegraph.pl > flame.svg
 ```
 
@@ -148,7 +148,7 @@ perf script | stackcollapse-perf.pl | flamegraph.pl > flame.svg
 
 ```bash
 cargo build --release
-instruments -t "Time Profiler" ./target/release/rawk 'program' input.txt
+instruments -t "Time Profiler" ./target/release/awk-rs 'program' input.txt
 ```
 
 ### Using cargo-flamegraph
@@ -169,17 +169,17 @@ seq 1 100000 | awk '{print $1, $1*2, $1*3}' > /tmp/test.txt
 # Benchmark gawk
 time gawk '{ sum += $1 } END { print sum }' /tmp/test.txt
 
-# Benchmark rawk
-time ./target/release/rawk '{ sum += $1 } END { print sum }' /tmp/test.txt
+# Benchmark awk-rs
+time ./target/release/awk-rs '{ sum += $1 } END { print sum }' /tmp/test.txt
 ```
 
 Typical results (100,000 lines):
 - gawk: ~50ms
-- rawk: ~80ms (current, improving)
+- awk-rs: ~80ms (current, improving)
 
 ## Memory Usage
 
-rawk aims for reasonable memory usage:
+awk-rs aims for reasonable memory usage:
 
 - Strings are stored once and referenced where possible
 - Fields are only materialized when accessed
@@ -189,11 +189,11 @@ To profile memory:
 
 ```bash
 # Using heaptrack (Linux)
-heaptrack ./target/release/rawk 'program' input.txt
-heaptrack_gui heaptrack.rawk.*.gz
+heaptrack ./target/release/awk-rs 'program' input.txt
+heaptrack_gui heaptrack.awk-rs.*.gz
 
 # Using Instruments (macOS)
-instruments -t "Allocations" ./target/release/rawk 'program' input.txt
+instruments -t "Allocations" ./target/release/awk-rs 'program' input.txt
 ```
 
 ## Continuous Benchmarking

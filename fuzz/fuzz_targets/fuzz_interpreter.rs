@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use rawk::{Interpreter, Lexer, Parser};
+use awk_rs::{Interpreter, Lexer, Parser};
 use std::io::{BufReader, Cursor};
 
 fuzz_target!(|data: &[u8]| {

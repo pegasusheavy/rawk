@@ -20,7 +20,7 @@ impl fmt::Display for SourceLocation {
     }
 }
 
-/// All error types for rawk
+/// All error types for awk-rs
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("lexer error at {location}: {message}")]
@@ -80,7 +80,7 @@ impl Error {
     }
 }
 
-/// Result type alias for rawk operations
+/// Result type alias for awk-rs operations
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]

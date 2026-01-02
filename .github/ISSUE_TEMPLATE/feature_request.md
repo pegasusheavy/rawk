@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a new feature or enhancement for rawk
+about: Suggest a new feature or enhancement for awk-rs
 title: '[FEATURE] '
 labels: enhancement
 assignees: ''

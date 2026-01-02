@@ -1,6 +1,6 @@
-# Contributing to RAWK
+# Contributing to awk-rs
 
-Thank you for your interest in contributing to RAWK! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to awk-rs! This document provides guidelines and information for contributors.
 
 ## Code of Conduct
 
@@ -18,8 +18,8 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 ```bash
 # Clone the repository
-git clone https://github.com/pegasusheavy/rawk.git
-cd rawk
+git clone https://github.com/pegasusheavy/awk-rs.git
+cd awk-rs
 
 # Build the project
 cargo build
@@ -41,7 +41,7 @@ cargo run -- 'BEGIN { print "Hello, World!" }'
    - The AWK program that triggers the bug
    - Input data (if applicable)
    - Expected output (ideally from gawk)
-   - Actual rawk output
+   - Actual awk-rs output
    - Your environment details
 
 ### Suggesting Features
@@ -118,7 +118,7 @@ cargo test -- --nocapture
 
 ### AWK Compatibility
 
-RAWK aims for 100% POSIX AWK compatibility with GNU AWK extensions:
+awk-rs aims for 100% POSIX AWK compatibility with GNU AWK extensions:
 
 1. **POSIX First**: Core functionality must match POSIX spec
 2. **gawk Extensions**: Clearly document as extensions
@@ -166,4 +166,4 @@ Contributors will be recognized in:
 - GitHub contributors list
 - Release notes (for significant contributions)
 
-Thank you for contributing to RAWK!
+Thank you for contributing to awk-rs!

@@ -11,7 +11,7 @@ use std::fmt;
 /// # Examples
 ///
 /// ```
-/// use rawk::Value;
+/// use awk_rs::Value;
 ///
 /// // Numbers
 /// let num = Value::Number(42.0);

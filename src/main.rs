@@ -3,7 +3,7 @@ use std::fs::{self, File};
 use std::io::{self, BufReader};
 use std::process;
 
-use rawk::{Interpreter, Lexer, Parser};
+use awk_rs::{Interpreter, Lexer, Parser};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -11,7 +11,7 @@ fn main() {
     match run(&args[1..]) {
         Ok(code) => process::exit(code),
         Err(e) => {
-            eprintln!("rawk: {}", e);
+            eprintln!("awk-rs: {}", e);
             process::exit(2);
         }
     }
@@ -35,7 +35,7 @@ fn run(args: &[String]) -> Result<i32, Box<dyn std::error::Error>> {
         }
 
         if arg == "--version" {
-            println!("rawk {}", env!("CARGO_PKG_VERSION"));
+            println!("awk-rs {}", env!("CARGO_PKG_VERSION"));
             return Ok(0);
         }
 
@@ -159,8 +159,8 @@ fn run(args: &[String]) -> Result<i32, Box<dyn std::error::Error>> {
 
 fn print_help() {
     println!(
-        r#"Usage: rawk [OPTIONS] 'program' [file ...]
-       rawk [OPTIONS] -f progfile [file ...]
+        r#"Usage: awk-rs [OPTIONS] 'program' [file ...]
+       awk-rs [OPTIONS] -f progfile [file ...]
 
 A 100% POSIX-compatible AWK implementation in Rust with gawk extensions.
 
@@ -181,10 +181,10 @@ GAWK Extensions (disabled with --posix or --traditional):
   gensub(), patsplit(), asort(), asorti() String/array functions
 
 Examples:
-  rawk '{{ print $1 }}' file.txt
-  rawk -F: '{{ print $1 }}' /etc/passwd
-  rawk 'BEGIN {{ print "Hello" }}'
-  rawk '/pattern/ {{ print }}' file.txt
+  awk-rs '{{ print $1 }}' file.txt
+  awk-rs -F: '{{ print $1 }}' /etc/passwd
+  awk-rs 'BEGIN {{ print "Hello" }}'
+  awk-rs '/pattern/ {{ print }}' file.txt
 "#
     );
 }

@@ -1,6 +1,6 @@
 ---
 name: Compatibility Issue
-about: Report a difference between rawk and another AWK implementation
+about: Report a difference between awk-rs and another AWK implementation
 title: '[COMPAT] '
 labels: compatibility
 assignees: ''
@@ -8,7 +8,7 @@ assignees: ''
 
 ## Compatibility Issue
 
-Describe the difference in behavior between rawk and another AWK implementation.
+Describe the difference in behavior between awk-rs and another AWK implementation.
 
 ## AWK Program
 
@@ -24,10 +24,10 @@ Describe the difference in behavior between rawk and another AWK implementation.
 test data
 ```
 
-## rawk Output
+## awk-rs Output
 
 ```
-# Output from rawk
+# Output from awk-rs
 ```
 
 ## Expected Output (from reference implementation)
@@ -57,7 +57,7 @@ Link to relevant documentation or specification (if applicable).
 
 ## Environment
 
-- **rawk version**: `rawk --version`
+- **awk-rs version**: `awk-rs --version`
 - **Operating System**: [e.g., Ubuntu 22.04]
 
 ## Additional Context

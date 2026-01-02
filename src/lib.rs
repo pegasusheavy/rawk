@@ -1,4 +1,4 @@
-//! rawk - A 100% POSIX-compatible AWK implementation in Rust
+//! awk-rs - A 100% POSIX-compatible AWK implementation in Rust
 //!
 //! This crate provides a complete AWK interpreter that aims for full compatibility
 //! with POSIX AWK and GNU AWK extensions.
@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```
-//! use rawk::{Lexer, Parser, Interpreter};
+//! use awk_rs::{Lexer, Parser, Interpreter};
 //! use std::io::BufReader;
 //!
 //! // Parse an AWK program
@@ -28,7 +28,7 @@
 //! # Field Processing Example
 //!
 //! ```
-//! use rawk::{Lexer, Parser, Interpreter};
+//! use awk_rs::{Lexer, Parser, Interpreter};
 //! use std::io::BufReader;
 //!
 //! let source = r#"{ print $1, $2 }"#;
@@ -51,7 +51,7 @@
 //! # Pattern Matching Example
 //!
 //! ```
-//! use rawk::{Lexer, Parser, Interpreter};
+//! use awk_rs::{Lexer, Parser, Interpreter};
 //! use std::io::BufReader;
 //!
 //! let source = r#"/error/ { print "Found:", $0 }"#;
