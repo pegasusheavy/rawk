@@ -175,7 +175,7 @@ pub enum Stmt {
         location: SourceLocation,
     },
 
-    /// Delete statement: delete array[index]
+    /// Delete statement: delete array\[index\]
     Delete {
         array: String,
         index: Vec<Expr>,
@@ -231,7 +231,7 @@ pub enum Expr {
     /// Field access: $expr
     Field(Box<Expr>, SourceLocation),
 
-    /// Array access: arr[index] or arr[i,j]
+    /// Array access: arr\[index\] or arr\[i,j\]
     ArrayAccess {
         array: String,
         indices: Vec<Expr>,
