@@ -10,10 +10,10 @@ categories = ["command-line-utilities", "text-processing"]
 
 [dependencies]
 regex = "1"
-thiserror = "1"
+thiserror = "2"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 tempfile = "3"
 
 [[bench]]
